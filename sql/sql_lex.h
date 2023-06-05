@@ -502,6 +502,8 @@ struct LEX_MASTER_INFO
   float heartbeat_period;
   int sql_delay;
   bool is_demotion_opt;
+  enum {UNTIL_SQL_BEFORE_GTIDS= 0, UNTIL_SQL_AFTER_GTIDS} gtid_until_condition;
+  bool is_until_exclusive;
   /*
     Enum is used for making it possible to detect if the user
     changed variable or if it should be left at old value
@@ -545,6 +547,8 @@ struct LEX_MASTER_INFO
     use_gtid_opt= LEX_GTID_UNCHANGED;
     sql_delay= -1;
     is_demotion_opt= 0;
+    gtid_until_condition= UNTIL_SQL_AFTER_GTIDS;
+    is_until_exclusive= false;
   }
 };
 

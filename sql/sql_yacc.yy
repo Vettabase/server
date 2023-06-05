@@ -851,6 +851,7 @@ bool my_yyoverflow(short **a, YYSTYPE **b, size_t *yystacksize);
 %token  <kwd>  EXCHANGE_SYM
 %token  <kwd>  EXAMINED_SYM
 %token  <kwd>  EXCLUDE_SYM                   /* SQL-2011-N */
+%token  <kwd>  EXCLUSIVE_SYM
 %token  <kwd>  EXECUTE_SYM                   /* SQL-2003-R */
 %token  <kwd>  EXCEPTION_MARIADB_SYM         /* SQL-2003-N, PLSQL-R */
 %token  <kwd>  EXIT_MARIADB_SYM              /* PLSQL-R */
@@ -894,6 +895,7 @@ bool my_yyoverflow(short **a, YYSTYPE **b, size_t *yystacksize);
 %token  <kwd>  IGNORE_SERVER_IDS_SYM
 %token  <kwd>  IMMEDIATE_SYM                 /* SQL-2003-R */
 %token  <kwd>  IMPORT
+%token  <kwd>  INCLUSIVE_SYM
 %token  <kwd>  INCREMENT_SYM
 %token  <kwd>  INDEXES
 %token  <kwd>  INITIAL_SIZE_SYM
@@ -1090,6 +1092,8 @@ bool my_yyoverflow(short **a, YYSTYPE **b, size_t *yystacksize);
 %token  <kwd>  SONAME_SYM
 %token  <kwd>  SOUNDS_SYM
 %token  <kwd>  SOURCE_SYM
+%token  <kwd>  SQL_AFTER_GTIDS_SYM
+%token  <kwd>  SQL_BEFORE_GTIDS_SYM
 %token  <kwd>  SQL_BUFFER_RESULT
 %token  <kwd>  SQL_CACHE_SYM
 %token  <kwd>  SQL_CALC_FOUND_ROWS
@@ -8004,11 +8008,28 @@ slave_until:
                            (lex->mi.relay_log_name && lex->mi.relay_log_pos))))
                my_yyabort_error((ER_BAD_SLAVE_UNTIL_COND, MYF(0)));
           }
-        | UNTIL_SYM MASTER_GTID_POS_SYM '=' TEXT_STRING_sys
+        | UNTIL_SYM gtid_until_boundary_opt MASTER_GTID_POS_SYM '=' TEXT_STRING_sys
+          {
+            Lex->mi.gtid_pos_str = $5;
+          }
+        | UNTIL_SYM SQL_AFTER_GTIDS_SYM '=' TEXT_STRING_sys
           {
             Lex->mi.gtid_pos_str = $4;
+            Lex->mi.is_until_exclusive= false;
+          }
+        | UNTIL_SYM SQL_BEFORE_GTIDS_SYM '=' TEXT_STRING_sys
+          {
+            Lex->mi.gtid_pos_str = $4;
+            Lex->mi.is_until_exclusive= true;
           }
         ;
+
+gtid_until_boundary_opt:
+          /* nothing */ { Lex->mi.is_until_exclusive= false; }
+        | INCLUSIVE_SYM { Lex->mi.is_until_exclusive= false; }
+        | EXCLUSIVE_SYM { Lex->mi.is_until_exclusive= true; }
+        ;
+
 
 slave_until_opts:
           master_file_def
