@@ -17,7 +17,9 @@ eval CREATE TABLE t (c INT KEY,c1 BLOB,c2 TEXT) ENGINE=Spider COMMENT='WRAPPER "
 XA START 'a';
 --error ER_WRONG_VALUE_COUNT_ON_ROW
 INSERT INTO t VALUES (0,0,0,0);
-SELECT SLEEP (1);
+select sum(variable_value) into @threads_cached from information_schema.global_status where variable_name in ('threads_cached', 'threadpool_idle_threads');
+let wait_condition= select sum(variable_value)>@threads_cached from information_schema.global_status where variable_name in ('threads_cached', 'threadpool_idle_threads');
+source include/wait_condition.inc;
 --error ER_NET_ERROR_ON_WRITE
 INSERT INTO t VALUES (1,2,3),(4,5,6),(7,8,9);
 --disable_result_log

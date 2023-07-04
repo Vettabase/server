@@ -11,9 +11,7 @@ CREATE TABLE t (c INT KEY,c1 BLOB,c2 TEXT) ENGINE=Spider COMMENT='WRAPPER "mysql
 XA START 'a';
 INSERT INTO t VALUES (0,0,0,0);
 ERROR 21S01: Column count doesn't match value count at row 1
-SELECT SLEEP (1);
-SLEEP (1)
-0
+select sum(variable_value) into @threads_cached from information_schema.global_status where variable_name in ('threads_cached', 'threadpool_idle_threads');
 INSERT INTO t VALUES (1,2,3),(4,5,6),(7,8,9);
 ERROR 08S01: Got an error writing communication packets
 SELECT * FROM information_schema.key_column_usage;
