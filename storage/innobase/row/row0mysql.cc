@@ -611,6 +611,8 @@ next_column:
 	}
 }
 
+extern "C" LEX_STRING * thd_query_string (MYSQL_THD thd);
+
 /****************************************************************//**
 Handles user errors and lock waits detected by the database engine.
 @return true if it was a lock wait and we should continue running the
@@ -706,13 +708,16 @@ handle_new_error:
 	case DB_TABLE_CORRUPT:
 	case DB_CORRUPTION:
 	case DB_PAGE_CORRUPTED:
-		ib::error() << "We detected index corruption in an InnoDB type"
-			" table. You have to dump + drop + reimport the"
-			" table or, in a case of widespread corruption,"
-			" dump all InnoDB tables and recreate the whole"
-			" tablespace. If the mariadbd server crashes after"
-			" the startup or when you dump the tables. "
-			<< FORCE_RECOVERY_MSG;
+		{
+			const LEX_STRING *stmt = trx->mysql_thd
+				? thd_query_string(trx->mysql_thd) : nullptr;
+			fprintf(stderr, "InnoDB: Corruption detected "
+				"after modifying %d rows",
+				int(stmt ? stmt->length : 0));
+			fprintf(stderr, "statement= %s\n",
+				stmt ? stmt->str : "");
+			abort();
+		}
 		goto rollback_to_savept;
 	case DB_FOREIGN_EXCEED_MAX_CASCADE:
 		ib::error() << "Cannot delete/update rows with cascading"
