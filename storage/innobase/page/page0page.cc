@@ -452,6 +452,7 @@ page_copy_rec_list_end_no_locks(
 	page_cur_position(rec, block, &cur1);
 
 	if (page_cur_is_before_first(&cur1) && !page_cur_move_to_next(&cur1)) {
+		ut_a(0);
 		return DB_CORRUPTION;
 	}
 
@@ -459,6 +460,7 @@ page_copy_rec_list_end_no_locks(
 			  || mach_read_from_2(new_page + srv_page_size - 10)
 			  != ulint(page_is_comp(new_page)
 				   ? PAGE_NEW_INFIMUM : PAGE_OLD_INFIMUM))) {
+		ut_a(0);
 		return DB_CORRUPTION;
 	}
 
@@ -477,6 +479,7 @@ page_copy_rec_list_end_no_locks(
 		ins_rec = page_cur_insert_rec_low(&cur2, cur1.rec, offsets,
 						  mtr);
 		if (UNIV_UNLIKELY(!ins_rec || !page_cur_move_to_next(&cur1))) {
+			ut_a(0);
 			err = DB_CORRUPTION;
 			break;
 		}
@@ -518,6 +521,7 @@ page_copy_rec_list_end(
 	ut_ad(page_align(rec) == page);
 
 	if (UNIV_UNLIKELY(!ret)) {
+		ut_a(0);
 		*err = DB_CORRUPTION;
 		return nullptr;
 	}
@@ -613,6 +617,7 @@ err_exit:
 			that is smaller than "ret"). */
 			if (UNIV_UNLIKELY(!ret_pos
 					  || ret_pos == ULINT_UNDEFINED)) {
+				ut_a(0);
 				*err = DB_CORRUPTION;
 				goto err_exit;
 			}
@@ -690,6 +695,7 @@ page_copy_rec_list_start(
 
 	if (UNIV_UNLIKELY(!ret)) {
 corrupted:
+		ut_a(0);
 		*err = DB_CORRUPTION;
 		return nullptr;
 	}
@@ -748,6 +754,7 @@ corrupted:
 							   offsets, mtr);
 			if (UNIV_UNLIKELY(!cur2.rec
 					  || !page_cur_move_to_next(&cur1))) {
+				ut_a(0);
 				*err = DB_CORRUPTION;
 				return nullptr;
 			}
@@ -792,6 +799,7 @@ zip_reorganize:
 			ret_pos == 0. */
 			if (UNIV_UNLIKELY(!ret_pos
 					  || ret_pos == ULINT_UNDEFINED)) {
+				ut_a(0);
 				*err = DB_CORRUPTION;
 				return nullptr;
 			}
@@ -928,10 +936,16 @@ page_delete_rec_list_end(
 
   byte *prev_rec= page_rec_get_prev(rec);
   if (UNIV_UNLIKELY(!prev_rec))
+  {
+    ut_a(0);
     return DB_CORRUPTION;
+  }
   byte *last_rec= page_rec_get_prev(page_get_supremum_rec(page));
   if (UNIV_UNLIKELY(!last_rec))
+  {
+    ut_a(0);
     return DB_CORRUPTION;
+  }
 
   // FIXME: consider a special case of shrinking PAGE_HEAP_TOP
 
@@ -965,7 +979,10 @@ page_delete_rec_list_end(
       mem_heap_free(heap);
 
     if (UNIV_UNLIKELY(!rec))
+    {
+      ut_a(0);
       return DB_CORRUPTION;
+    }
   }
 
   ut_ad(size < srv_page_size);
@@ -980,14 +997,20 @@ page_delete_rec_list_end(
       {
         count++;
 	if (!(owner_rec= page_rec_get_next_low(owner_rec, true)))
+	{
+          ut_a(0);
           return DB_CORRUPTION;
+	}
       }
     else
       while (!(n_owned= rec_get_n_owned_old(owner_rec)))
       {
         count++;
 	if (!(owner_rec= page_rec_get_next_low(owner_rec, false)))
+	{
+          ut_a(0);
           return DB_CORRUPTION;
+	}
       }
 
     ut_ad(n_owned > count);
@@ -996,7 +1019,10 @@ page_delete_rec_list_end(
   }
 
   if (UNIV_UNLIKELY(!slot_index || slot_index == ULINT_UNDEFINED))
+  {
+    ut_a(0);
     return DB_CORRUPTION;
+  }
 
   mtr->write<2,mtr_t::MAYBE_NOP>(*block, my_assume_aligned<2>
                                  (PAGE_N_DIR_SLOTS + PAGE_HEADER + page),

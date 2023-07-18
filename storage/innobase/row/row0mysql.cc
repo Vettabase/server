@@ -705,6 +705,10 @@ handle_new_error:
 	case DB_TABLE_CORRUPT:
 	case DB_CORRUPTION:
 	case DB_PAGE_CORRUPTED:
+		{
+			fprintf(stderr, "err %d\n", err);
+			abort();
+		}
 		ib::error() << "We detected index corruption in an InnoDB type"
 			" table. You have to dump + drop + reimport the"
 			" table or, in a case of widespread corruption,"

@@ -291,6 +291,7 @@ btr_root_block_get(
              !btr_root_fseg_validate(FIL_PAGE_DATA + PAGE_BTR_SEG_TOP,
                                      *block, *index->table->space))
     {
+      ut_a(0);
       *err= DB_CORRUPTION;
       block= nullptr;
     }
@@ -1260,7 +1261,10 @@ static dberr_t btr_page_reorganize_low(page_cur_t *cursor, mtr_t *mtr)
   const ulint pos= page_rec_get_n_recs_before(cursor->rec);
 
   if (UNIV_UNLIKELY(pos == ULINT_UNDEFINED))
+  {
+    ut_a(0);
     return DB_CORRUPTION;
+  }
 
   btr_search_drop_page_hash_index(block, false);
 
@@ -1324,6 +1328,7 @@ static dberr_t btr_page_reorganize_low(page_cur_t *cursor, mtr_t *mtr)
     sql_print_error("InnoDB: Page old data size %u new data size %u"
                     ", page old max ins size %zu new max ins size %zu",
                     data_size1, data_size2, max1, max2);
+    ut_a(0);
     return DB_CORRUPTION;
   }
 
@@ -1331,7 +1336,10 @@ static dberr_t btr_page_reorganize_low(page_cur_t *cursor, mtr_t *mtr)
   if (!pos)
     ut_ad(cursor->rec == page_get_infimum_rec(block->page.frame));
   else if (!(cursor->rec= page_rec_get_nth(block->page.frame, pos)))
+  {
+    ut_a(0);
     return DB_CORRUPTION;
+  }
 
   if (block->page.id().page_no() != cursor->index->page ||
       fil_page_get_type(old->page.frame) != FIL_PAGE_TYPE_INSTANT)
@@ -1540,7 +1548,10 @@ dberr_t btr_page_reorganize(page_cur_t *cursor, mtr_t *mtr)
 
   ulint pos= page_rec_get_n_recs_before(cursor->rec);
   if (UNIV_UNLIKELY(pos == ULINT_UNDEFINED))
+  {
+    ut_a(0);
     return DB_CORRUPTION;
+  }
 
   dberr_t err= page_zip_reorganize(cursor->block, cursor->index,
                                    page_zip_level, mtr, true);
@@ -1548,7 +1559,10 @@ dberr_t btr_page_reorganize(page_cur_t *cursor, mtr_t *mtr)
   else if (!pos)
     ut_ad(cursor->rec == page_get_infimum_rec(cursor->block->page.frame));
   else if (!(cursor->rec= page_rec_get_nth(cursor->block->page.frame, pos)))
+  {
+    ut_a(0);
     err= DB_CORRUPTION;
+  }
 
   return err;
 }
@@ -1939,6 +1953,7 @@ btr_root_raise_and_insert(
 	if (page_cur_search_with_match(tuple, PAGE_CUR_LE,
 				       &up_match, &low_match,
 				       page_cursor, nullptr)) {
+		ut_a(0);
 		*err = DB_CORRUPTION;
 		return nullptr;
 	}
@@ -2462,6 +2477,7 @@ btr_attach_half_pages(
                                                     block->page.frame
                                                     + FIL_PAGE_OFFSET,
                                                     4))) {
+			ut_a(0);
 			return DB_CORRUPTION;
 		}
 		btr_page_set_next(prev_block, lower_block->page.id().page_no(),
@@ -2474,6 +2490,7 @@ btr_attach_half_pages(
                                                     block->page.frame
                                                     + FIL_PAGE_OFFSET,
                                                     4))) {
+			ut_a(0);
 			return DB_CORRUPTION;
 		}
 		btr_page_set_prev(next_block, upper_block->page.id().page_no(),
@@ -2835,6 +2852,7 @@ func_start:
 		}
 
 		if (UNIV_UNLIKELY(!split_rec)) {
+			ut_a(0);
 			*err = DB_CORRUPTION;
 			return nullptr;
 		}
@@ -2887,6 +2905,7 @@ got_split_rec:
 	} else if (insert_left) {
 		if (UNIV_UNLIKELY(!n_iterations)) {
 corrupted:
+			ut_a(0);
 			*err = DB_CORRUPTION;
 			return nullptr;
 		}
@@ -3081,6 +3100,7 @@ insert_empty:
 	if (page_cur_search_with_match(tuple,
 				       PAGE_CUR_LE, &up_match, &low_match,
 				       page_cursor, nullptr)) {
+		ut_a(0);
 		*err = DB_CORRUPTION;
 		return nullptr;
 	}
@@ -3494,6 +3514,7 @@ get_offsets:
 		nth_rec = page_rec_get_n_recs_before(btr_cur_get_rec(cursor));
 		if (UNIV_UNLIKELY(!nth_rec || nth_rec == ULINT_UNDEFINED)) {
 		corrupted:
+			ut_a(0);
 			err = DB_CORRUPTION;
 			goto err_exit;
 		}
@@ -3998,6 +4019,7 @@ btr_discard_page(
 	    ? !rtr_page_get_father(mtr, cursor, &parent_cursor,
 				   cursor->rtr_info->thr)
 	    : !btr_page_get_father(mtr, &parent_cursor)) {
+		ut_a(0);
 		return DB_CORRUPTION;
 	}
 
@@ -4067,6 +4089,7 @@ btr_discard_page(
 			btr_set_min_rec_mark<true>(node_ptr, *merge_block,
 						   mtr);
 		} else {
+			ut_a(0);
 			return DB_CORRUPTION;
 		}
 	} else {
@@ -4078,6 +4101,7 @@ btr_discard_page(
 					    [PAGE_HEADER + PAGE_LEVEL],
 					    &block->page.frame
 					    [PAGE_HEADER + PAGE_LEVEL], 2))) {
+		ut_a(0);
 		return DB_CORRUPTION;
 	}
 
@@ -4657,6 +4681,7 @@ btr_validate_level(
 		case DB_SUCCESS:
 			btr_validate_report1(index, level, block);
 			ib::warn() << "Page is free";
+			ut_a(0);
 			e = DB_CORRUPTION;
 			/* fall through */
 		default:
@@ -4670,6 +4695,7 @@ btr_validate_level(
 #endif /* UNIV_ZIP_DEBUG */
 		if (page_is_leaf(page)) {
 corrupted:
+			ut_a(0);
 			err = DB_CORRUPTION;
 			goto invalid_page;
 		}
@@ -4744,21 +4770,26 @@ func_exit:
 		btr_validate_report1(index, level, block);
 
 		ib::warn() << "Page is marked as free";
+		ut_a(0);
 		err = DB_CORRUPTION;
 	} else if (btr_page_get_index_id(page) != index->id) {
 		ib::error() << "Page index id " << btr_page_get_index_id(page)
 			<< " != data dictionary index id " << index->id;
+		ut_a(0);
 		err = DB_CORRUPTION;
 	} else if (!page_validate(page, index)) {
 		btr_validate_report1(index, level, block);
+		ut_a(0);
 		err = DB_CORRUPTION;
 	} else if (btr_page_get_level(page) != level) {
 		btr_validate_report1(index, level, block);
 		ib::error() << "Page level is not " << level;
+		ut_a(0);
 		err = DB_CORRUPTION;
 	} else if (level == 0 && !btr_index_page_validate(block, index)) {
 		/* We are on level 0. Check that the records have the right
 		number of fields, and field lengths are right. */
+		ut_a(0);
 		err = DB_CORRUPTION;
 	} else if (!page_is_empty(page)) {
 	} else if (level) {
@@ -4788,6 +4819,7 @@ func_exit:
 			btr_validate_report2(index, level, block, right_block);
 			fputs("InnoDB: broken FIL_PAGE_NEXT"
 			      " or FIL_PAGE_PREV links\n", stderr);
+			ut_a(0);
                         err = DB_CORRUPTION;
 		}
 
@@ -4836,6 +4868,7 @@ broken_links:
 				rec_print(stderr, rec, index);
 			}
 			putc('\n', stderr);
+			ut_a(0);
 			err = DB_CORRUPTION;
 		}
 	}
@@ -4847,9 +4880,11 @@ broken_links:
 		      & rec_get_info_bits(first, page_is_comp(page)))) {
 			btr_validate_report1(index, level, block);
 			ib::error() << "Missing REC_INFO_MIN_REC_FLAG";
+			ut_a(0);
 			err = DB_CORRUPTION;
 		}
 	} else {
+		ut_a(0);
 		err = DB_CORRUPTION;
 		goto node_ptr_fails;
 	}
@@ -4865,6 +4900,7 @@ broken_links:
 		rec_t*	node_ptr
 			= page_rec_get_next(page_get_infimum_rec(page));
 		if (!node_ptr) {
+			ut_a(0);
 			err = DB_CORRUPTION;
 			goto node_ptr_fails;
 		}
@@ -4909,6 +4945,7 @@ broken_links:
 				putc('\n', stderr);
 			}
 
+			ut_a(0);
 			err = DB_CORRUPTION;
 			goto node_ptr_fails;
 		}
@@ -4931,10 +4968,12 @@ broken_links:
 				fputs("InnoDB: first rec ", stderr);
 				rec_print(stderr, first_rec, index);
 				putc('\n', stderr);
+				ut_a(0);
 				err = DB_CORRUPTION;
 				goto node_ptr_fails;
 			}
 		} else {
+			ut_a(0);
 			err = DB_CORRUPTION;
 			goto node_ptr_fails;
 		}
@@ -4943,6 +4982,7 @@ broken_links:
 			if (page_has_prev(father_page)
 			    || node_ptr != page_rec_get_next(
 				     page_get_infimum_rec(father_page))) {
+				ut_a(0);
 				err = DB_CORRUPTION;
 				goto node_ptr_fails;
 			}
@@ -4952,6 +4992,7 @@ broken_links:
 			if (page_has_next(father_page)
 			    || node_ptr != page_rec_get_prev(
 				     page_get_supremum_rec(father_page))) {
+				ut_a(0);
 				err = DB_CORRUPTION;
 				goto node_ptr_fails;
 			}
@@ -4974,6 +5015,7 @@ broken_links:
 				if (btr_cur_get_rec(&right_node_cur)
 				    != right_node_ptr) {
 node_pointer_corrupted:
+					ut_a(0);
 					err = DB_CORRUPTION;
 					fputs("InnoDB: node pointer to"
 					      " the right page is wrong\n",
@@ -4990,6 +5032,7 @@ node_pointer_corrupted:
 				    != page_rec_get_next(
 					    page_get_infimum_rec(
 						    right_father_page))) {
+					ut_a(0);
 					err = DB_CORRUPTION;
 					fputs("InnoDB: node pointer 2 to"
 					      " the right page is wrong\n",
@@ -5002,6 +5045,7 @@ node_pointer_corrupted:
 				if (page_get_page_no(right_father_page)
 				    != btr_page_get_next(father_page)) {
 
+					ut_a(0);
 					err = DB_CORRUPTION;
 					fputs("InnoDB: node pointer 3 to"
 					      " the right page is wrong\n",
@@ -5012,6 +5056,7 @@ node_pointer_corrupted:
 				}
 			}
 		} else {
+			ut_a(0);
 			err = DB_CORRUPTION;
 		}
 	}

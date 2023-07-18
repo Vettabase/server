@@ -109,6 +109,7 @@ oom:
 					  &m_mtr);
 		if (!new_block) {
 			m_mtr.commit();
+			ut_a(0);
 			return(DB_CORRUPTION);
 		}
 
@@ -1192,6 +1193,7 @@ BtrBulk::finish(dberr_t	err)
 		last_block = btr_block_get(*m_index, last_page_no, RW_X_LATCH,
 					   &mtr);
 		if (!last_block) {
+			ut_a(0);
 			err = DB_CORRUPTION;
 err_exit:
 			mtr.commit();

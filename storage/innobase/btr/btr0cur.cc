@@ -199,6 +199,7 @@ static dberr_t btr_cur_instant_init_low(dict_index_t* index, mtr_t* mtr)
 	const fil_space_t* space = index->table->space;
 	if (!space) {
 corrupted:
+		ut_a(0);
 		err = DB_CORRUPTION;
 unreadable:
 		ib::error() << "Table " << index->table->name
@@ -259,6 +260,7 @@ unreadable:
 		ib::error() << "Table " << index->table->name
 			    << " is missing instant ALTER metadata";
 		index->table->corrupted = true;
+		ut_a(0);
 		return DB_CORRUPTION;
 	}
 
@@ -268,6 +270,7 @@ incompatible:
 		ib::error() << "Table " << index->table->name
 			<< " contains unrecognizable instant ALTER metadata";
 		index->table->corrupted = true;
+		ut_a(0);
 		return DB_CORRUPTION;
 	}
 
@@ -467,6 +470,7 @@ dberr_t btr_cur_instant_init(dict_table_t *table)
   dict_index_t *index= dict_table_get_first_index(table);
   mtr.start();
   dberr_t err = index ? btr_cur_instant_init_low(index, &mtr) : DB_CORRUPTION;
+  ut_a(err != DB_CORRUPTION);
   mtr.commit();
   if (err == DB_SUCCESS && index->is_gen_clust())
   {
@@ -1081,6 +1085,7 @@ dberr_t btr_cur_t::search_leaf(const dtuple_t *tuple, page_cur_mode_t mode,
   corrupted:
     ut_ad("corrupted" == 0); // FIXME: remove this
     err= DB_CORRUPTION;
+    ut_a(0);
     goto func_exit;
   }
 
@@ -1491,8 +1496,11 @@ dberr_t btr_cur_t::pessimistic_search_leaf(const dtuple_t *tuple,
   {
     if (page_cur_search_with_match(tuple, mode, &up_match, &low_match,
                                    &page_cur, nullptr))
+    {
     corrupted:
+      ut_a(0);
       err= DB_CORRUPTION;
+    }
     else
     {
       ut_ad(up_match != ULINT_UNDEFINED || mode != PAGE_CUR_GE);
@@ -1549,10 +1557,16 @@ dberr_t btr_cur_t::pessimistic_search_leaf(const dtuple_t *tuple,
       btr_page_get_index_id(block->page.frame) != index()->id ||
       fil_page_get_type(block->page.frame) == FIL_PAGE_RTREE ||
       !fil_page_index_page_check(block->page.frame))
+  {
+    ut_a(0);
     goto corrupted;
+  }
 
   if (--height != btr_page_get_level(block->page.frame))
+  {
+    ut_a(0);
     goto corrupted;
+  }
 
   if (page_has_prev(block->page.frame) &&
       !btr_block_get(*index(), btr_page_get_prev(block->page.frame),
@@ -1652,6 +1666,7 @@ search_loop:
       !fil_page_index_page_check(block->page.frame))
   {
   corrupted:
+    ut_a(0);
     err= DB_CORRUPTION;
   func_exit:
     if (UNIV_LIKELY_NULL(heap))

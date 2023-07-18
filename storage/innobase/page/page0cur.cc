@@ -444,6 +444,7 @@ up_slot_match:
 		page_dir_get_nth_slot(page, up));
 	if (UNIV_UNLIKELY(!low_rec || !up_rec)) {
 corrupted:
+		ut_a(0);
 		if (UNIV_LIKELY_NULL(heap)) {
 			mem_heap_free(heap);
 		}
@@ -655,6 +656,7 @@ page_cur_search_with_match_bytes(
 		mid_rec = page_dir_slot_get_rec_validate(
 			page_dir_get_nth_slot(page, mid));
 		if (UNIV_UNLIKELY(!mid_rec)) {
+			ut_a(0);
 			goto corrupted;
 		}
 
@@ -725,6 +727,7 @@ corrupted:
 			}
 			mid_rec = next;
 		} else {
+			ut_a(0);
 			goto corrupted;
 		}
 		ut_pair_min(&cur_matched_fields, &cur_matched_bytes,
