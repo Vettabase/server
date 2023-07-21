@@ -487,3 +487,16 @@ DROP TABLE t1;
 CREATE TABLE t (a CHAR CHARACTER SET utf8) ENGINE=InnoDB ROW_FORMAT=REDUNDANT;
 INSERT t SELECT left(seq,1) FROM seq_1_to_43691;
 DROP TABLE t;
+
+--echo #
+--echo #  MDEV-31298 Bulk insert operation aborts the server
+--echo #   after resetting the unique_checks variable
+--echo #
+CREATE TABLE t1 (a INT,b INT,c INT,d INT,PRIMARY KEY(a),KEY(b),KEY(c),KEY(d)) ENGINE=InnoDB;
+begin;
+INSERT INTO t1 VALUES (0,0,0,0);
+SET @@unique_checks=1;
+CREATE TEMPORARY SEQUENCE s1 engine=innodb;
+commit;
+SET @@unique_checks=0;
+DROP TABLE t1;
