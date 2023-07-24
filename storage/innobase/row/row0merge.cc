@@ -5334,6 +5334,10 @@ dberr_t row_merge_bulk_t::write_to_index(ulint index_no, trx_t *trx)
         nullptr, &m_blob_file);
 
 func_exit:
+  if (err == DB_SUCCESS && index->is_primary()
+      && table->persistent_autoinc)
+    btr_write_autoinc(index, table->autoinc);
+
   if (err != DB_SUCCESS)
     trx->error_info= index;
   err= btr_bulk.finish(err);
