@@ -1323,7 +1323,9 @@ public:
   }
 #else
   Log_event() : temp_buf(0), when(0), flags(0) {}
-  ha_checksum crc;
+  /* The checksum algorithm used (if any) when the event was read. */
+  enum enum_binlog_checksum_alg read_checksum_alg;
+  ha_checksum read_checksum_value;
   /* print*() functions are used by mysqlbinlog */
   virtual bool print(FILE* file, PRINT_EVENT_INFO* print_event_info) = 0;
   bool print_timestamp(IO_CACHE* file, time_t *ts = 0);
@@ -1413,7 +1415,7 @@ public:
      On the slave side the value is assigned from post_header_len[last] 
      of the last seen FD event.
   */
-  enum enum_binlog_checksum_alg checksum_alg;
+  enum enum_binlog_checksum_alg checksum_alg_hulubulu;
 
   static void *operator new(size_t size)
   {
@@ -2877,6 +2879,11 @@ public:
   master_version_split server_version_split;
   const uint8 *event_type_permutation;
   uint32 options_written_to_bin_log;
+  /*
+    The checksum algorithm as read from the binlog or relaylog; or
+    BINLOG_CHECKSUM_ALG_UNDEF if not originating from a log read.
+  */
+  enum enum_binlog_checksum_alg source_checksum_alg;
 
   Format_description_log_event(uint8 binlog_ver, const char* server_ver=0);
   Format_description_log_event(const uchar *buf, uint event_len,

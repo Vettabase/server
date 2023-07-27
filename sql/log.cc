@@ -3925,14 +3925,14 @@ bool MYSQL_BIN_LOG::open(const char *log_name,
           relay_log_checksum_alg=
             opt_slave_sql_verify_checksum ? (enum_binlog_checksum_alg) binlog_checksum_options
                                           : BINLOG_CHECKSUM_ALG_OFF;
-        s.checksum_alg= relay_log_checksum_alg;
+        s.checksum_alg_hulubulu= relay_log_checksum_alg;
         s.set_relay_log_event();
       }
       else
-        s.checksum_alg= (enum_binlog_checksum_alg)binlog_checksum_options;
+        s.checksum_alg_hulubulu= (enum_binlog_checksum_alg)binlog_checksum_options;
 
       crypto.scheme = 0;
-      DBUG_ASSERT(s.checksum_alg != BINLOG_CHECKSUM_ALG_UNDEF);
+      DBUG_ASSERT(s.checksum_alg_hulubulu != BINLOG_CHECKSUM_ALG_UNDEF);
       if (!s.is_valid())
         goto err;
       s.dont_set_created= null_created_arg;
@@ -3955,7 +3955,7 @@ bool MYSQL_BIN_LOG::open(const char *log_name,
             goto err;
 
           Start_encryption_log_event sele(1, key_version, crypto.nonce);
-          sele.checksum_alg= s.checksum_alg;
+          sele.checksum_alg_hulubulu= s.checksum_alg_hulubulu;
           if (write_event(&sele))
             goto err;
 
@@ -5530,7 +5530,7 @@ int MYSQL_BIN_LOG::new_file_impl()
       value computed with an algorithm of the last relay-logged FD event.
     */
     if (is_relay_log)
-      r.checksum_alg= relay_log_checksum_alg;
+      r.checksum_alg_hulubulu= relay_log_checksum_alg;
     DBUG_ASSERT(!is_relay_log ||
                 relay_log_checksum_alg != BINLOG_CHECKSUM_ALG_UNDEF);
     if ((DBUG_IF("fault_injection_new_file_rotate_event") &&
@@ -9096,7 +9096,7 @@ void MYSQL_BIN_LOG::close(uint exiting)
     {
       Stop_log_event s;
       // the checksumming rule for relay-log case is similar to Rotate
-        s.checksum_alg= is_relay_log ? relay_log_checksum_alg
+        s.checksum_alg_hulubulu= is_relay_log ? relay_log_checksum_alg
                                      : (enum_binlog_checksum_alg)binlog_checksum_options;
       DBUG_ASSERT(!is_relay_log ||
                   relay_log_checksum_alg != BINLOG_CHECKSUM_ALG_UNDEF);
@@ -11268,7 +11268,7 @@ bool Recovery_context::decide_or_assess(xid_recovery_member *member, int round,
           if (truncate_gtid.seq_no == 0 /* was reset or never set */ ||
               (truncate_set_in_1st && round == 2 /* reevaluted at round turn */))
           {
-            if (set_truncate_coord(linfo, round, fdle->checksum_alg))
+            if (set_truncate_coord(linfo, round, fdle->source_checksum_alg))
               return true;
           }
           else
