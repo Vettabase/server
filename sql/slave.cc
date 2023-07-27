@@ -1869,10 +1869,11 @@ static int get_master_version_and_clock(MYSQL* mysql, Master_info* mi)
 
     until it has received a new FD_m.
   */
-  mi->rli.relay_log.description_event_for_queue->checksum_alg=
+  mi->rli.relay_log.description_event_for_queue->source_checksum_alg=
+  mi->rli.relay_log.description_event_for_queue->checksum_alg_hulubulu=
     mi->rli.relay_log.relay_log_checksum_alg;
 
-  DBUG_ASSERT(mi->rli.relay_log.description_event_for_queue->checksum_alg !=
+  DBUG_ASSERT(mi->rli.relay_log.description_event_for_queue->source_checksum_alg !=
               BINLOG_CHECKSUM_ALG_UNDEF);
   DBUG_ASSERT(mi->rli.relay_log.relay_log_checksum_alg !=
               BINLOG_CHECKSUM_ALG_UNDEF); 
@@ -6033,14 +6034,15 @@ static int process_io_rotate(Master_info *mi, Rotate_log_event *rev)
   */
   if (mi->rli.relay_log.description_event_for_queue->binlog_version >= 4)
   {
-    DBUG_ASSERT(mi->rli.relay_log.description_event_for_queue->checksum_alg ==
+    DBUG_ASSERT(mi->rli.relay_log.description_event_for_queue->source_checksum_alg ==
                 mi->rli.relay_log.relay_log_checksum_alg);
     
     delete mi->rli.relay_log.description_event_for_queue;
     /* start from format 3 (MySQL 4.0) again */
     mi->rli.relay_log.description_event_for_queue= new
       Format_description_log_event(3);
-    mi->rli.relay_log.description_event_for_queue->checksum_alg=
+    mi->rli.relay_log.description_event_for_queue->source_checksum_alg=
+    mi->rli.relay_log.description_event_for_queue->checksum_alg_hulubulu=
       mi->rli.relay_log.relay_log_checksum_alg;    
   }
   /*
@@ -6315,7 +6317,8 @@ static int queue_event(Master_info* mi, const uchar *buf, ulong event_len)
   {
     // checksum behaviour is similar to the pre-checksum FD handling
     mi->checksum_alg_before_fd= BINLOG_CHECKSUM_ALG_UNDEF;
-    mi->rli.relay_log.description_event_for_queue->checksum_alg=
+    mi->rli.relay_log.description_event_for_queue->source_checksum_alg=
+    mi->rli.relay_log.description_event_for_queue->checksum_alg_hulubulu=
       mi->rli.relay_log.relay_log_checksum_alg= checksum_alg=
       BINLOG_CHECKSUM_ALG_OFF;
   }
@@ -6445,7 +6448,7 @@ static int queue_event(Master_info* mi, const uchar *buf, ulong event_len)
         case likewise rollback the partially received event group.
       */
       Format_description_log_event fdle(4);
-      fdle.checksum_alg= checksum_alg;
+      fdle.checksum_alg_hulubulu= fdle.source_checksum_alg= checksum_alg;
 
       /*
         Possible crash is flagged in being created FD' common header
@@ -6526,7 +6529,7 @@ static int queue_event(Master_info* mi, const uchar *buf, ulong event_len)
                            event_len - BINLOG_CHECKSUM_LEN);
       int4store(&rot_buf[event_len - BINLOG_CHECKSUM_LEN], rot_crc);
       DBUG_ASSERT(event_len == uint4korr(&rot_buf[EVENT_LEN_OFFSET]));
-      DBUG_ASSERT(mi->rli.relay_log.description_event_for_queue->checksum_alg ==
+      DBUG_ASSERT(mi->rli.relay_log.description_event_for_queue->source_checksum_alg ==
                   mi->rli.relay_log.relay_log_checksum_alg);
       /* the first one */
       DBUG_ASSERT(mi->checksum_alg_before_fd != BINLOG_CHECKSUM_ALG_UNDEF);
@@ -6546,7 +6549,7 @@ static int queue_event(Master_info* mi, const uchar *buf, ulong event_len)
         int4store(&rot_buf[EVENT_LEN_OFFSET],
                   uint4korr(&rot_buf[EVENT_LEN_OFFSET]) - BINLOG_CHECKSUM_LEN);
         DBUG_ASSERT(event_len == uint4korr(&rot_buf[EVENT_LEN_OFFSET]));
-        DBUG_ASSERT(mi->rli.relay_log.description_event_for_queue->checksum_alg ==
+        DBUG_ASSERT(mi->rli.relay_log.description_event_for_queue->source_checksum_alg ==
                     mi->rli.relay_log.relay_log_checksum_alg);
         /* the first one */
         DBUG_ASSERT(mi->checksum_alg_before_fd != BINLOG_CHECKSUM_ALG_UNDEF);
@@ -6586,11 +6589,11 @@ static int queue_event(Master_info* mi, const uchar *buf, ulong event_len)
     tmp->copy_crypto_data(mi->rli.relay_log.description_event_for_queue);
     delete mi->rli.relay_log.description_event_for_queue;
     mi->rli.relay_log.description_event_for_queue= tmp;
-    if (tmp->checksum_alg == BINLOG_CHECKSUM_ALG_UNDEF)
-      tmp->checksum_alg= BINLOG_CHECKSUM_ALG_OFF;
+    if (tmp->source_checksum_alg == BINLOG_CHECKSUM_ALG_UNDEF)
+      tmp->source_checksum_alg= BINLOG_CHECKSUM_ALG_OFF;
 
     /* installing new value of checksum Alg for relay log */
-    mi->rli.relay_log.relay_log_checksum_alg= tmp->checksum_alg;
+    mi->rli.relay_log.relay_log_checksum_alg= tmp->source_checksum_alg;
 
     /*
       Do not queue any format description event that we receive after a

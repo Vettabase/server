@@ -575,7 +575,7 @@ int append_query_string(CHARSET_INFO *csinfo, String *to,
 
 Log_event::Log_event(THD* thd_arg, uint16 flags_arg, bool using_trans)
   :log_pos(0), temp_buf(0), exec_time(0), thd(thd_arg),
-   checksum_alg(BINLOG_CHECKSUM_ALG_UNDEF)
+   checksum_alg_hulubulu(BINLOG_CHECKSUM_ALG_UNDEF)
 {
   server_id=	thd->variables.server_id;
   when=         thd->start_time;
@@ -599,7 +599,7 @@ Log_event::Log_event(THD* thd_arg, uint16 flags_arg, bool using_trans)
 
 Log_event::Log_event()
   :temp_buf(0), exec_time(0), flags(0), cache_type(EVENT_INVALID_CACHE),
-   thd(0), checksum_alg(BINLOG_CHECKSUM_ALG_UNDEF)
+   thd(0), checksum_alg_hulubulu(BINLOG_CHECKSUM_ALG_UNDEF)
 {
   server_id=	global_system_variables.server_id;
   /*
@@ -767,12 +767,12 @@ my_bool Log_event::need_checksum()
      and Stop event) 
      provides their checksum alg preference through Log_event::checksum_alg.
   */
-  if (checksum_alg != BINLOG_CHECKSUM_ALG_UNDEF)
-    ret= checksum_alg != BINLOG_CHECKSUM_ALG_OFF;
+  if (checksum_alg_hulubulu != BINLOG_CHECKSUM_ALG_UNDEF)
+    ret= checksum_alg_hulubulu != BINLOG_CHECKSUM_ALG_OFF;
   else
   {
     ret= binlog_checksum_options && cache_type == Log_event::EVENT_NO_CACHE;
-    checksum_alg= ret ? (enum_binlog_checksum_alg)binlog_checksum_options
+    checksum_alg_hulubulu= ret ? (enum_binlog_checksum_alg)binlog_checksum_options
                       : BINLOG_CHECKSUM_ALG_OFF;
   }
   /*
@@ -786,7 +786,7 @@ my_bool Log_event::need_checksum()
               data_written == 0);
 
   DBUG_ASSERT(!ret || 
-              ((checksum_alg == binlog_checksum_options ||
+              ((checksum_alg_hulubulu == binlog_checksum_options ||
                /* 
                   Stop event closes the relay-log and its checksum alg
                   preference is set by the caller can be different
@@ -803,9 +803,9 @@ my_bool Log_event::need_checksum()
                get_type_code() == START_ENCRYPTION_EVENT ||
                /* FD is always checksummed */
                get_type_code() == FORMAT_DESCRIPTION_EVENT) && 
-               checksum_alg != BINLOG_CHECKSUM_ALG_OFF));
+               checksum_alg_hulubulu != BINLOG_CHECKSUM_ALG_OFF));
 
-  DBUG_ASSERT(checksum_alg != BINLOG_CHECKSUM_ALG_UNDEF);
+  DBUG_ASSERT(checksum_alg_hulubulu != BINLOG_CHECKSUM_ALG_UNDEF);
 
   DBUG_ASSERT(((get_type_code() != ROTATE_EVENT &&
                 get_type_code() != STOP_EVENT) ||
@@ -2636,7 +2636,7 @@ bool Format_description_log_event::write(Log_event_writer *writer)
   data_written= 0; // to prepare for need_checksum assert
 #endif
   uint8 checksum_byte= (uint8)
-    (need_checksum() ? checksum_alg : BINLOG_CHECKSUM_ALG_OFF);
+    (need_checksum() ? checksum_alg_hulubulu : BINLOG_CHECKSUM_ALG_OFF);
   /* 
      FD of checksum-aware server is always checksum-equipped, (V) is in,
      regardless of @@global.binlog_checksum policy.
@@ -2650,9 +2650,9 @@ bool Format_description_log_event::write(Log_event_writer *writer)
      1 + 4 bytes bigger comparing to the former FD.
   */
 
-  if ((no_checksum= (checksum_alg == BINLOG_CHECKSUM_ALG_OFF)))
+  if ((no_checksum= (checksum_alg_hulubulu == BINLOG_CHECKSUM_ALG_OFF)))
   {
-    checksum_alg= BINLOG_CHECKSUM_ALG_CRC32;  // Forcing (V) room to fill anyway
+    checksum_alg_hulubulu= BINLOG_CHECKSUM_ALG_CRC32;  // Forcing (V) room to fill anyway
   }
   ret= write_header(writer, rec_size) ||
        write_data(writer, buff, sizeof(buff)) ||
@@ -2660,7 +2660,7 @@ bool Format_description_log_event::write(Log_event_writer *writer)
        write_data(writer, &checksum_byte, sizeof(checksum_byte)) ||
        write_footer(writer);
   if (no_checksum)
-    checksum_alg= BINLOG_CHECKSUM_ALG_OFF;
+    checksum_alg_hulubulu= BINLOG_CHECKSUM_ALG_OFF;
   return ret;
 }
 
