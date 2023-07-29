@@ -6095,7 +6095,8 @@ THD::binlog_start_trans_and_stmt()
       uchar *buf= 0;
       size_t len= 0;
       IO_CACHE tmp_io_cache;
-      Log_event_writer writer(&tmp_io_cache, 0);
+        // Replicated events in writeset doesn't have checksum
+      Log_event_writer writer(&tmp_io_cache, 0, BINLOG_CHECKSUM_ALG_OFF, NULL);
       if(!open_cached_file(&tmp_io_cache, mysql_tmpdir, TEMP_PREFIX,
                           128, MYF(MY_WME)))
       {
@@ -6110,8 +6111,6 @@ THD::binlog_start_trans_and_stmt()
         }
         Gtid_log_event gtid_event(this, seqno, domain_id, true,
                                   LOG_EVENT_SUPPRESS_USE_F, true, 0);
-        // Replicated events in writeset doesn't have checksum
-        gtid_event.checksum_alg= BINLOG_CHECKSUM_ALG_OFF;
         gtid_event.server_id= server_id;
         writer.write(&gtid_event);
         wsrep_write_cache_buf(&tmp_io_cache, &buf, &len);
