@@ -6480,7 +6480,7 @@ static int queue_event(Master_info* mi, const uchar *buf, ulong event_len)
                             rev.new_log_ident);
       }
       mysql_mutex_lock(log_lock);
-      if (likely(!rli->relay_log.write_event(&fdle) &&
+      if (likely(!rli->relay_log.write_event(&fdle, checksum_alg) &&
                  !rli->relay_log.flush_and_sync(NULL)))
       {
         rli->relay_log.harvest_bytes_written(&rli->log_space_total);
@@ -7158,7 +7158,8 @@ dbug_gtid_accept:
       rli->relay_log.description_event_for_queue->created= 0;
       rli->relay_log.description_event_for_queue->set_artificial_event();
       if (rli->relay_log.append_no_lock
-          (rli->relay_log.description_event_for_queue))
+          (rli->relay_log.description_event_for_queue,
+           rli->relay_log.relay_log_checksum_alg))
         error= ER_SLAVE_RELAY_LOG_WRITE_FAILURE;
       else
         rli->relay_log.harvest_bytes_written(&rli->log_space_total);
@@ -7171,7 +7172,8 @@ dbug_gtid_accept:
       */
       Rotate_log_event fake_rev(mi->master_log_name, 0, mi->master_log_pos, 0);
       fake_rev.server_id= mi->master_id;
-      if (rli->relay_log.append_no_lock(&fake_rev))
+      if (rli->relay_log.append_no_lock(&fake_rev,
+                                        rli->relay_log.relay_log_checksum_alg))
         error= ER_SLAVE_RELAY_LOG_WRITE_FAILURE;
       else
         rli->relay_log.harvest_bytes_written(&rli->log_space_total);

@@ -991,6 +991,8 @@ class Log_event_writer
 public:
   ulonglong bytes_written;
   void *ctx;         ///< Encryption context or 0 if no encryption is needed
+  /* The checksum algorithm to use when writing events, if any. */
+  enum enum_binlog_checksum_alg write_checksum_alg;
   uint checksum_len;
   int write(Log_event *ev);
   int write_header(uchar *pos, size_t len);
@@ -1003,9 +1005,10 @@ public:
   { encrypt_or_write= &Log_event_writer::encrypt_and_write; }
 
   Log_event_writer(IO_CACHE *file_arg, binlog_cache_data *cache_data_arg,
-                   Binlog_crypt_data *cr= 0)
+                   enum enum_binlog_checksum_alg checksum_alg,
+                   Binlog_crypt_data *cr)
     :encrypt_or_write(&Log_event_writer::write_internal),
-    bytes_written(0), ctx(0),
+    bytes_written(0), ctx(0), write_checksum_alg(checksum_alg),
     file(file_arg), cache_data(cache_data_arg), crypto(cr) { }
 
 private:
@@ -1442,6 +1445,7 @@ public:
   { return writer->write_footer(); }
 
   my_bool need_checksum();
+  enum enum_binlog_checksum_alg select_checksum_alg();
 
   virtual bool write(Log_event_writer *writer)
   {

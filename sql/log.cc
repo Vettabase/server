@@ -3919,24 +3919,25 @@ bool MYSQL_BIN_LOG::open(const char *log_name,
       if (io_cache_type == WRITE_CACHE)
         s.flags |= LOG_EVENT_BINLOG_IN_USE_F;
 
+     enum enum_binlog_checksum_alg checksum_alg= BINLOG_CHECKSUM_ALG_UNDEF;
       if (is_relay_log)
       {
         if (relay_log_checksum_alg == BINLOG_CHECKSUM_ALG_UNDEF)
           relay_log_checksum_alg=
             opt_slave_sql_verify_checksum ? (enum_binlog_checksum_alg) binlog_checksum_options
                                           : BINLOG_CHECKSUM_ALG_OFF;
-        s.checksum_alg_hulubulu= relay_log_checksum_alg;
+        checksum_alg= relay_log_checksum_alg;
         s.set_relay_log_event();
       }
       else
-        s.checksum_alg_hulubulu= (enum_binlog_checksum_alg)binlog_checksum_options;
+        checksum_alg= (enum_binlog_checksum_alg)binlog_checksum_options;
 
       crypto.scheme = 0;
-      DBUG_ASSERT(s.checksum_alg_hulubulu != BINLOG_CHECKSUM_ALG_UNDEF);
+      DBUG_ASSERT(checksum_alg != BINLOG_CHECKSUM_ALG_UNDEF);
       if (!s.is_valid())
         goto err;
       s.dont_set_created= null_created_arg;
-      if (write_event(&s))
+      if (write_event(&s, checksum_alg))
         goto err;
       bytes_written+= s.data_written;
 
@@ -3956,7 +3957,7 @@ bool MYSQL_BIN_LOG::open(const char *log_name,
 
           Start_encryption_log_event sele(1, key_version, crypto.nonce);
           sele.checksum_alg_hulubulu= s.checksum_alg_hulubulu;
-          if (write_event(&sele))
+          if (write_event(&sele, checksum_alg))
             goto err;
 
           // Start_encryption_log_event is written, enable the encryption
@@ -4082,7 +4083,8 @@ bool MYSQL_BIN_LOG::open(const char *log_name,
       /* Don't set log_pos in event header */
       description_event_for_queue->set_artificial_event();
 
-      if (write_event(description_event_for_queue))
+      if (write_event(description_event_for_queue,
+                      description_event_for_queue->source_checksum_alg))
         goto err;
       bytes_written+= description_event_for_queue->data_written;
     }
@@ -5525,17 +5527,19 @@ int MYSQL_BIN_LOG::new_file_impl()
     */
     Rotate_log_event r(new_name + dirname_length(new_name), 0, LOG_EVENT_OFFSET,
                        is_relay_log ? Rotate_log_event::RELAY_LOG : 0);
+    enum enum_binlog_checksum_alg checksum_alg = BINLOG_CHECKSUM_ALG_UNDEF;
     /*
       The current relay-log's closing Rotate event must have checksum
       value computed with an algorithm of the last relay-logged FD event.
     */
     if (is_relay_log)
-      r.checksum_alg_hulubulu= relay_log_checksum_alg;
-    DBUG_ASSERT(!is_relay_log ||
-                relay_log_checksum_alg != BINLOG_CHECKSUM_ALG_UNDEF);
+      checksum_alg= relay_log_checksum_alg;
+    else
+      checksum_alg= r.select_checksum_alg();
+    DBUG_ASSERT(relay_log_checksum_alg != BINLOG_CHECKSUM_ALG_UNDEF);
     if ((DBUG_IF("fault_injection_new_file_rotate_event") &&
                          (error= close_on_error= TRUE)) ||
-        (error= write_event(&r)))
+        (error= write_event(&r, checksum_alg)))
     {
       DBUG_EXECUTE_IF("fault_injection_new_file_rotate_event", errno= 2;);
       close_on_error= TRUE;
@@ -5653,10 +5657,22 @@ end2:
   DBUG_RETURN(error);
 }
 
-bool MYSQL_BIN_LOG::write_event(Log_event *ev, binlog_cache_data *cache_data,
+bool MYSQL_BIN_LOG::write_event(Log_event *ev, binlog_cache_data *data,
                                 IO_CACHE *file)
 {
-  Log_event_writer writer(file, 0, &crypto);
+  return write_event(ev, ev->select_checksum_alg(), data, file);
+}
+
+bool MYSQL_BIN_LOG::write_event(Log_event *ev)
+{
+  return write_event(ev, ev->select_checksum_alg(), 0, &log_file);
+}
+
+bool MYSQL_BIN_LOG::write_event(Log_event *ev,
+                                enum enum_binlog_checksum_alg checksum_alg,
+                                binlog_cache_data *cache_data, IO_CACHE *file)
+{
+  Log_event_writer writer(file, 0, checksum_alg, &crypto);
   if (crypto.scheme && file == &log_file)
   {
     writer.ctx= alloca(crypto.ctx_size);
@@ -5671,13 +5687,14 @@ bool MYSQL_BIN_LOG::append(Log_event *ev)
 {
   bool res;
   mysql_mutex_lock(&LOCK_log);
-  res= append_no_lock(ev);
+  res= append_no_lock(ev, ev->select_checksum_alg());
   mysql_mutex_unlock(&LOCK_log);
   return res;
 }
 
 
-bool MYSQL_BIN_LOG::append_no_lock(Log_event* ev)
+bool MYSQL_BIN_LOG::append_no_lock(Log_event* ev,
+                                   enum enum_binlog_checksum_alg checksum_alg)
 {
   bool error = 0;
   DBUG_ENTER("MYSQL_BIN_LOG::append");
@@ -5685,7 +5702,7 @@ bool MYSQL_BIN_LOG::append_no_lock(Log_event* ev)
   mysql_mutex_assert_owner(&LOCK_log);
   DBUG_ASSERT(log_file.type == SEQ_READ_APPEND);
 
-  if (write_event(ev))
+  if (write_event(ev, checksum_alg))
   {
     error=1;
     goto err;
@@ -6296,7 +6313,7 @@ bool THD::binlog_write_table_map(TABLE *table, bool with_annotate)
   binlog_cache_data *cache_data= (cache_mngr->
                                   get_binlog_cache_data(is_transactional));
   IO_CACHE *file= &cache_data->cache_log;
-  Log_event_writer writer(file, cache_data);
+  Log_event_writer writer(file, cache_data, the_event.select_checksum_alg(), NULL);
 
   if (with_annotate)
     if (binlog_write_annotated_row(&writer))
@@ -6450,7 +6467,8 @@ MYSQL_BIN_LOG::flush_and_set_pending_rows_event(THD *thd,
 
   if (Rows_log_event* pending= cache_data->pending())
   {
-    Log_event_writer writer(&cache_data->cache_log, cache_data);
+    Log_event_writer writer(&cache_data->cache_log, cache_data,
+                            pending->select_checksum_alg(), NULL);
 
     /*
       Write pending event to the cache.
@@ -7498,11 +7516,16 @@ class CacheWriter: public Log_event_writer
 public:
   size_t remains;
 
-  CacheWriter(THD *thd_arg, IO_CACHE *file_arg, bool do_checksum,
+  CacheWriter(THD *thd_arg, IO_CACHE *file_arg,
+              enum enum_binlog_checksum_alg checksum_alg,
               Binlog_crypt_data *cr)
-    : Log_event_writer(file_arg, 0, cr), remains(0), thd(thd_arg),
+    : Log_event_writer(file_arg, 0, checksum_alg, cr), remains(0), thd(thd_arg),
       first(true)
-  { checksum_len= do_checksum ? BINLOG_CHECKSUM_LEN : 0; }
+  {
+    checksum_len= ( (checksum_alg != BINLOG_CHECKSUM_ALG_OFF &&
+                     checksum_alg != BINLOG_CHECKSUM_ALG_UNDEF) ?
+                    BINLOG_CHECKSUM_LEN : 0);
+  }
 
   ~CacheWriter()
   { status_var_add(thd->status_var.binlog_bytes_written, bytes_written); }
@@ -7553,7 +7576,9 @@ int MYSQL_BIN_LOG::write_cache(THD *thd, IO_CACHE *cache)
   size_t val;
   size_t end_log_pos_inc= 0; // each event processed adds BINLOG_CHECKSUM_LEN 2 t
   uchar header[LOG_EVENT_HEADER_LEN];
-  CacheWriter writer(thd, &log_file, binlog_checksum_options, &crypto);
+  CacheWriter writer(thd, &log_file,
+                     (enum_binlog_checksum_alg)binlog_checksum_options,
+                     &crypto);
 
   if (crypto.scheme)
   {
@@ -9096,11 +9121,11 @@ void MYSQL_BIN_LOG::close(uint exiting)
     {
       Stop_log_event s;
       // the checksumming rule for relay-log case is similar to Rotate
-        s.checksum_alg_hulubulu= is_relay_log ? relay_log_checksum_alg
-                                     : (enum_binlog_checksum_alg)binlog_checksum_options;
-      DBUG_ASSERT(!is_relay_log ||
-                  relay_log_checksum_alg != BINLOG_CHECKSUM_ALG_UNDEF);
-      write_event(&s);
+      enum enum_binlog_checksum_alg checksum_alg= is_relay_log ?
+        relay_log_checksum_alg :
+        (enum_binlog_checksum_alg)binlog_checksum_options;
+      DBUG_ASSERT(checksum_alg != BINLOG_CHECKSUM_ALG_UNDEF);
+      write_event(&s, checksum_alg);
       bytes_written+= s.data_written;
       flush_io_cache(&log_file);
       update_binlog_end_pos();

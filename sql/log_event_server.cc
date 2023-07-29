@@ -815,6 +815,14 @@ my_bool Log_event::need_checksum()
   DBUG_RETURN(ret);
 }
 
+enum enum_binlog_checksum_alg Log_event::select_checksum_alg()
+{
+  if (cache_type == Log_event::EVENT_NO_CACHE)
+    return (enum_binlog_checksum_alg)binlog_checksum_options;
+  else
+    return BINLOG_CHECKSUM_ALG_OFF;
+}
+
 int Log_event_writer::write_internal(const uchar *pos, size_t len)
 {
   DBUG_ASSERT(!ctx || encrypt_or_write == &Log_event_writer::encrypt_and_write);
@@ -5022,7 +5030,9 @@ int Create_file_log_event::do_apply_event(rpl_group_info *rgi)
   char *ext;
   int fd = -1;
   IO_CACHE file;
-  Log_event_writer lew(&file, 0);
+  enum enum_binlog_checksum_alg checksum_alg= opt_slave_sql_verify_checksum ?
+    BINLOG_CHECKSUM_ALG_CRC32 : BINLOG_CHECKSUM_ALG_OFF;
+  Log_event_writer lew(&file, 0, checksum_alg, NULL);
   int error = 1;
   Relay_log_info const *rli= rgi->rli;
 
