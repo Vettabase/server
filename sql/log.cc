@@ -5535,7 +5535,7 @@ int MYSQL_BIN_LOG::new_file_impl()
     if (is_relay_log)
       checksum_alg= relay_log_checksum_alg;
     else
-      checksum_alg= r.select_checksum_alg();
+      checksum_alg= (enum_binlog_checksum_alg)binlog_checksum_options;
     DBUG_ASSERT(checksum_alg != BINLOG_CHECKSUM_ALG_UNDEF);
     if ((DBUG_IF("fault_injection_new_file_rotate_event") &&
                          (error= close_on_error= TRUE)) ||
@@ -5683,11 +5683,12 @@ bool MYSQL_BIN_LOG::write_event(Log_event *ev,
   return writer.write(ev);
 }
 
-bool MYSQL_BIN_LOG::append(Log_event *ev)
+bool MYSQL_BIN_LOG::append(Log_event *ev,
+                           enum enum_binlog_checksum_alg checksum_alg)
 {
   bool res;
   mysql_mutex_lock(&LOCK_log);
-  res= append_no_lock(ev, ev->select_checksum_alg());
+  res= append_no_lock(ev, checksum_alg);
   mysql_mutex_unlock(&LOCK_log);
   return res;
 }

@@ -2579,11 +2579,16 @@ bool Format_description_log_event::write(Log_event_writer *writer)
      1 + 4 bytes bigger comparing to the former FD.
   */
 
+  enum enum_binlog_checksum_alg old_checksum_alg= BINLOG_CHECKSUM_ALG_UNDEF;
+  if (checksum_byte == BINLOG_CHECKSUM_ALG_OFF)
+    old_checksum_alg= writer->set_checksum_alg(BINLOG_CHECKSUM_ALG_CRC32);
   ret= write_header(writer, rec_size) ||
        write_data(writer, buff, sizeof(buff)) ||
        write_data(writer, post_header_len, number_of_event_types) ||
        write_data(writer, &checksum_byte, sizeof(checksum_byte)) ||
        write_footer(writer);
+  if (checksum_byte == BINLOG_CHECKSUM_ALG_OFF)
+    writer->set_checksum_alg(old_checksum_alg);
   return ret;
 }
 
@@ -4945,11 +4950,11 @@ int Create_file_log_event::do_apply_event(rpl_group_info *rgi)
   char *ext;
   int fd = -1;
   IO_CACHE file;
-  enum enum_binlog_checksum_alg checksum_alg= opt_slave_sql_verify_checksum ?
-    BINLOG_CHECKSUM_ALG_CRC32 : BINLOG_CHECKSUM_ALG_OFF;
+  Relay_log_info const *rli= rgi->rli;
+  enum enum_binlog_checksum_alg checksum_alg=
+    rli->relay_log.description_event_for_exec->used_checksum_alg;
   Log_event_writer lew(&file, 0, checksum_alg, NULL);
   int error = 1;
-  Relay_log_info const *rli= rgi->rli;
 
   THD_STAGE_INFO(thd, stage_making_temp_file_create_before_load_data);
   bzero((char*)&file, sizeof(file));

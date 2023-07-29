@@ -2759,7 +2759,7 @@ static void write_ignored_events_info_to_relay_log(THD *thd, Master_info *mi)
     {
       DBUG_PRINT("info",("writing a Rotate event to track down ignored events"));
       rev->server_id= 0; // don't be ignored by slave SQL thread
-      if (unlikely(rli->relay_log.append(rev)))
+      if (unlikely(rli->relay_log.append(rev, rli->relay_log.relay_log_checksum_alg)))
         mi->report(ERROR_LEVEL, ER_SLAVE_RELAY_LOG_WRITE_FAILURE, NULL,
                    ER_THD(thd, ER_SLAVE_RELAY_LOG_WRITE_FAILURE),
                    "failed to write a Rotate event"
@@ -2772,7 +2772,7 @@ static void write_ignored_events_info_to_relay_log(THD *thd, Master_info *mi)
       DBUG_PRINT("info",("writing a Gtid_list event to track down ignored events"));
       glev->server_id= 0; // don't be ignored by slave SQL thread
       glev->set_artificial_event(); // Don't mess up Exec_Master_Log_Pos
-      if (unlikely(rli->relay_log.append(glev)))
+      if (unlikely(rli->relay_log.append(glev, rli->relay_log.relay_log_checksum_alg)))
         mi->report(ERROR_LEVEL, ER_SLAVE_RELAY_LOG_WRITE_FAILURE, NULL,
                    ER_THD(thd, ER_SLAVE_RELAY_LOG_WRITE_FAILURE),
                    "failed to write a Gtid_list event to the relay log, "
@@ -5935,7 +5935,7 @@ static int process_io_create_file(Master_info* mi, Create_file_log_event* cev)
           break;
         Execute_load_log_event xev(thd,0,0);
         xev.log_pos = cev->log_pos;
-        if (unlikely(mi->rli.relay_log.append(&xev)))
+        if (unlikely(mi->rli.relay_log.append(&xev, mi->rli.relay_log.relay_log_checksum_alg)))
         {
           mi->report(ERROR_LEVEL, ER_SLAVE_RELAY_LOG_WRITE_FAILURE, NULL,
                      ER_THD(thd, ER_SLAVE_RELAY_LOG_WRITE_FAILURE),
@@ -5949,7 +5949,7 @@ static int process_io_create_file(Master_info* mi, Create_file_log_event* cev)
       {
         cev->block = net->read_pos;
         cev->block_len = num_bytes;
-        if (unlikely(mi->rli.relay_log.append(cev)))
+        if (unlikely(mi->rli.relay_log.append(cev, mi->rli.relay_log.relay_log_checksum_alg)))
         {
           mi->report(ERROR_LEVEL, ER_SLAVE_RELAY_LOG_WRITE_FAILURE, NULL,
                      ER_THD(thd, ER_SLAVE_RELAY_LOG_WRITE_FAILURE),
@@ -5964,7 +5964,7 @@ static int process_io_create_file(Master_info* mi, Create_file_log_event* cev)
         aev.block = net->read_pos;
         aev.block_len = num_bytes;
         aev.log_pos = cev->log_pos;
-        if (unlikely(mi->rli.relay_log.append(&aev)))
+        if (unlikely(mi->rli.relay_log.append(&aev, mi->rli.relay_log.relay_log_checksum_alg)))
         {
           mi->report(ERROR_LEVEL, ER_SLAVE_RELAY_LOG_WRITE_FAILURE, NULL,
                      ER_THD(thd, ER_SLAVE_RELAY_LOG_WRITE_FAILURE),
@@ -6148,13 +6148,15 @@ static int queue_binlog_ver_1_event(Master_info *mi, const uchar *buf,
   }
   if (likely(!ignore_event))
   {
+    enum enum_binlog_checksum_alg checksum_alg=
+      mi->rli.relay_log.description_event_for_queue->used_checksum_alg;
     if (ev->log_pos)
       /*
          Don't do it for fake Rotate events (see comment in
       Log_event::Log_event(const char* buf...) in log_event.cc).
       */
       ev->log_pos+= event_len; /* make log_pos be the pos of the end of the event */
-    if (unlikely(rli->relay_log.append(ev)))
+    if (unlikely(rli->relay_log.append(ev, checksum_alg)))
     {
       delete ev;
       mysql_mutex_unlock(&mi->data_lock);
@@ -6180,6 +6182,7 @@ static int queue_binlog_ver_3_event(Master_info *mi, const uchar *buf,
   ulong inc_pos;
   char *tmp_buf = 0;
   Relay_log_info *rli= &mi->rli;
+  enum enum_binlog_checksum_alg checksum_alg;
   DBUG_ENTER("queue_binlog_ver_3_event");
 
   /* read_log_event() will adjust log_pos to be end_log_pos */
@@ -6212,7 +6215,8 @@ static int queue_binlog_ver_3_event(Master_info *mi, const uchar *buf,
     break;
   }
 
-  if (unlikely(rli->relay_log.append(ev)))
+  checksum_alg= mi->rli.relay_log.description_event_for_queue->used_checksum_alg;
+  if (unlikely(rli->relay_log.append(ev, checksum_alg)))
   {
     delete ev;
     mysql_mutex_unlock(&mi->data_lock);
