@@ -6447,8 +6447,8 @@ static int queue_event(Master_info* mi, const uchar *buf, ulong event_len)
         We detect this case by noticing a change of server_id and in this
         case likewise rollback the partially received event group.
       */
-      Format_description_log_event fdle(4);
-      fdle.checksum_alg_hulubulu= fdle.source_checksum_alg= checksum_alg;
+      Format_description_log_event fdle(4, NULL, checksum_alg);
+      fdle.checksum_alg_hulubulu= checksum_alg;
 
       /*
         Possible crash is flagged in being created FD' common header

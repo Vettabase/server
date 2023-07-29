@@ -1009,6 +1009,9 @@ public:
                    Binlog_crypt_data *cr)
     :encrypt_or_write(&Log_event_writer::write_internal),
     bytes_written(0), ctx(0), write_checksum_alg(checksum_alg),
+    checksum_len(( checksum_alg != BINLOG_CHECKSUM_ALG_OFF &&
+                   checksum_alg != BINLOG_CHECKSUM_ALG_UNDEF) ?
+                 BINLOG_CHECKSUM_LEN : 0),
     file(file_arg), cache_data(cache_data_arg), crypto(cr) { }
 
 private:
@@ -2889,7 +2892,8 @@ public:
   */
   enum enum_binlog_checksum_alg source_checksum_alg;
 
-  Format_description_log_event(uint8 binlog_ver, const char* server_ver=0);
+  Format_description_log_event(uint8 binlog_ver, const char* server_ver= 0,
+      enum enum_binlog_checksum_alg checksum_alg= BINLOG_CHECKSUM_ALG_UNDEF);
   Format_description_log_event(const uchar *buf, uint event_len,
                                const Format_description_log_event
                                *description_event);
