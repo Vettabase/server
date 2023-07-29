@@ -1017,7 +1017,7 @@ Log_event* Log_event::read_log_event(const uchar *buf, uint event_len,
   uint event_type= buf[EVENT_TYPE_OFFSET];
   // all following START events in the current file are without checksum
   if (event_type == START_EVENT_V3)
-    (const_cast< Format_description_log_event *>(fdle))->checksum_alg_hulubulu= (const_cast< Format_description_log_event *>(fdle))->source_checksum_alg= BINLOG_CHECKSUM_ALG_OFF;
+    (const_cast< Format_description_log_event *>(fdle))->checksum_alg_hulubulu= (const_cast< Format_description_log_event *>(fdle))->used_checksum_alg= BINLOG_CHECKSUM_ALG_OFF;
   /*
     CRC verification by SQL and Show-Binlog-Events master side.
     The caller has to provide @fdle->checksum_alg to
@@ -1038,7 +1038,7 @@ Log_event* Log_event::read_log_event(const uchar *buf, uint event_len,
     Notice, a pre-checksum FD version forces alg := BINLOG_CHECKSUM_ALG_UNDEF.
   */
   alg= (event_type != FORMAT_DESCRIPTION_EVENT) ?
-    fdle->source_checksum_alg : get_checksum_alg(buf, event_len);
+    fdle->used_checksum_alg : get_checksum_alg(buf, event_len);
   // Emulate the corruption during reading an event
   DBUG_EXECUTE_IF("corrupt_read_log_event_char",
     if (event_type != FORMAT_DESCRIPTION_EVENT)
@@ -2042,7 +2042,7 @@ Format_description_log_event::
 Format_description_log_event(uint8 binlog_ver, const char* server_ver,
                              enum enum_binlog_checksum_alg checksum_alg)
   :Start_log_event_v3(), event_type_permutation(0),
-   source_checksum_alg(checksum_alg)
+   used_checksum_alg(checksum_alg)
 {
   binlog_version= binlog_ver;
   switch (binlog_ver) {
@@ -2236,7 +2236,7 @@ Format_description_log_event(const uchar *buf, uint event_len,
                              description_event)
   :Start_log_event_v3(buf, event_len, description_event),
    common_header_len(0), post_header_len(NULL), event_type_permutation(0),
-   source_checksum_alg(BINLOG_CHECKSUM_ALG_UNDEF)
+   used_checksum_alg(BINLOG_CHECKSUM_ALG_UNDEF)
 {
   DBUG_ENTER("Format_description_log_event::Format_description_log_event(char*,...)");
   if (!Start_log_event_v3::is_valid())
@@ -2260,7 +2260,7 @@ Format_description_log_event(const uchar *buf, uint event_len,
   {
     /* the last bytes are the checksum alg desc and value (or value's room) */
     number_of_event_types -= BINLOG_CHECKSUM_ALG_DESC_LEN;
-    checksum_alg_hulubulu= source_checksum_alg= (enum_binlog_checksum_alg)post_header_len[number_of_event_types];
+    checksum_alg_hulubulu= used_checksum_alg= (enum_binlog_checksum_alg)post_header_len[number_of_event_types];
   }
   else
   {

@@ -2887,10 +2887,11 @@ public:
   const uint8 *event_type_permutation;
   uint32 options_written_to_bin_log;
   /*
-    The checksum algorithm as read from the binlog or relaylog; or
-    BINLOG_CHECKSUM_ALG_UNDEF if not originating from a log read.
+    The checksum algorithm used in the binlog or relaylog following this
+    Format_description_event. Or BINLOG_CHECKSUM_ALG_UNDEF for a
+    Format_description_event which is not part of a binlog or relaylog file.
   */
-  enum enum_binlog_checksum_alg source_checksum_alg;
+  enum enum_binlog_checksum_alg used_checksum_alg;
 
   Format_description_log_event(uint8 binlog_ver, const char* server_ver= 0,
       enum enum_binlog_checksum_alg checksum_alg= BINLOG_CHECKSUM_ALG_UNDEF);

@@ -4085,7 +4085,7 @@ bool MYSQL_BIN_LOG::open(const char *log_name,
       description_event_for_queue->set_artificial_event();
 
       if (write_event(description_event_for_queue,
-                      description_event_for_queue->source_checksum_alg))
+                      description_event_for_queue->used_checksum_alg))
         goto err;
       bytes_written+= description_event_for_queue->data_written;
     }
@@ -11291,7 +11291,7 @@ bool Recovery_context::decide_or_assess(xid_recovery_member *member, int round,
           if (truncate_gtid.seq_no == 0 /* was reset or never set */ ||
               (truncate_set_in_1st && round == 2 /* reevaluted at round turn */))
           {
-            if (set_truncate_coord(linfo, round, fdle->source_checksum_alg))
+            if (set_truncate_coord(linfo, round, fdle->used_checksum_alg))
               return true;
           }
           else
