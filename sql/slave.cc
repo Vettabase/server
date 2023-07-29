@@ -1872,8 +1872,6 @@ static int get_master_version_and_clock(MYSQL* mysql, Master_info* mi)
 
     until it has received a new FD_m.
   */
-  mi->rli.relay_log.description_event_for_queue->checksum_alg_hulubulu=
-    mi->rli.relay_log.relay_log_checksum_alg;
 
   DBUG_ASSERT(mi->rli.relay_log.description_event_for_queue->used_checksum_alg !=
               BINLOG_CHECKSUM_ALG_UNDEF);
@@ -6043,8 +6041,6 @@ static int process_io_rotate(Master_info *mi, Rotate_log_event *rev)
     /* start from format 3 (MySQL 4.0) again */
     mi->rli.relay_log.description_event_for_queue= new
       Format_description_log_event(3, NULL, mi->rli.relay_log.relay_log_checksum_alg);
-    mi->rli.relay_log.description_event_for_queue->checksum_alg_hulubulu=
-      mi->rli.relay_log.relay_log_checksum_alg;    
   }
   /*
     Rotate the relay log makes binlog format detection easier (at next slave
@@ -6319,7 +6315,6 @@ static int queue_event(Master_info* mi, const uchar *buf, ulong event_len)
     // checksum behaviour is similar to the pre-checksum FD handling
     mi->checksum_alg_before_fd= BINLOG_CHECKSUM_ALG_UNDEF;
     mi->rli.relay_log.description_event_for_queue->used_checksum_alg=
-    mi->rli.relay_log.description_event_for_queue->checksum_alg_hulubulu=
       mi->rli.relay_log.relay_log_checksum_alg= checksum_alg=
       BINLOG_CHECKSUM_ALG_OFF;
   }
@@ -6449,7 +6444,6 @@ static int queue_event(Master_info* mi, const uchar *buf, ulong event_len)
         case likewise rollback the partially received event group.
       */
       Format_description_log_event fdle(4, NULL, checksum_alg);
-      fdle.checksum_alg_hulubulu= checksum_alg;
 
       /*
         Possible crash is flagged in being created FD' common header

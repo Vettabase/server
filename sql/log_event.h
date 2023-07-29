@@ -991,8 +991,13 @@ class Log_event_writer
 public:
   ulonglong bytes_written;
   void *ctx;         ///< Encryption context or 0 if no encryption is needed
-  /* The checksum algorithm to use when writing events, if any. */
-  enum enum_binlog_checksum_alg write_checksum_alg;
+  /*
+    The length of a checksum written at the end of the event, if any.
+    Currently this is always either 0, when checksums are disabled, or
+    BINLOG_CHECKSUM_LEN when using BINLOG_CHECKSUM_ALG_CRC32.
+    (If we ever add another checksum algorithm, we will need to instead store
+    here the algorithm to use instead of just the length).
+  */
   uint checksum_len;
   int write(Log_event *ev);
   int write_header(uchar *pos, size_t len);
@@ -1008,7 +1013,7 @@ public:
                    enum enum_binlog_checksum_alg checksum_alg,
                    Binlog_crypt_data *cr)
     :encrypt_or_write(&Log_event_writer::write_internal),
-    bytes_written(0), ctx(0), write_checksum_alg(checksum_alg),
+    bytes_written(0), ctx(0),
     checksum_len(( checksum_alg != BINLOG_CHECKSUM_ALG_OFF &&
                    checksum_alg != BINLOG_CHECKSUM_ALG_UNDEF) ?
                  BINLOG_CHECKSUM_LEN : 0),
@@ -1413,16 +1418,6 @@ public:
   static int read_log_event(IO_CACHE* file, String* packet,
                             const Format_description_log_event *fdle,
                             enum enum_binlog_checksum_alg checksum_alg_arg);
-  /* 
-     The value is set by caller of FD constructor and
-     Log_event::write_header() for the rest.
-     In the FD case it's propagated into the last byte 
-     of post_header_len[] at FD::write().
-     On the slave side the value is assigned from post_header_len[last] 
-     of the last seen FD event.
-  */
-  enum enum_binlog_checksum_alg checksum_alg_hulubulu;
-
   static void *operator new(size_t size)
   {
     extern PSI_memory_key key_memory_log_event;
@@ -1447,7 +1442,6 @@ public:
   bool write_footer(Log_event_writer *writer)
   { return writer->write_footer(); }
 
-  my_bool need_checksum();
   enum enum_binlog_checksum_alg select_checksum_alg();
 
   virtual bool write(Log_event_writer *writer)

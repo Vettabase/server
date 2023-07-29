@@ -718,8 +718,7 @@ const char* Log_event::get_type_str()
 
 Log_event::Log_event(const uchar *buf,
                      const Format_description_log_event* description_event)
-  :temp_buf(0), exec_time(0), cache_type(Log_event::EVENT_INVALID_CACHE),
-    checksum_alg_hulubulu(BINLOG_CHECKSUM_ALG_UNDEF)
+  :temp_buf(0), exec_time(0), cache_type(Log_event::EVENT_INVALID_CACHE)
 {
 #ifndef MYSQL_CLIENT
   thd= 0;
@@ -1017,7 +1016,8 @@ Log_event* Log_event::read_log_event(const uchar *buf, uint event_len,
   uint event_type= buf[EVENT_TYPE_OFFSET];
   // all following START events in the current file are without checksum
   if (event_type == START_EVENT_V3)
-    (const_cast< Format_description_log_event *>(fdle))->checksum_alg_hulubulu= (const_cast< Format_description_log_event *>(fdle))->used_checksum_alg= BINLOG_CHECKSUM_ALG_OFF;
+    (const_cast< Format_description_log_event *>(fdle))->used_checksum_alg=
+      BINLOG_CHECKSUM_ALG_OFF;
   /*
     CRC verification by SQL and Show-Binlog-Events master side.
     The caller has to provide @fdle->checksum_alg to
@@ -1258,7 +1258,6 @@ exit:
 
   if (ev)
   {
-    ev->checksum_alg_hulubulu= alg;
 #ifdef MYSQL_CLIENT
     ev->read_checksum_alg= alg;
     if (alg != BINLOG_CHECKSUM_ALG_OFF && alg != BINLOG_CHECKSUM_ALG_UNDEF)
@@ -2207,7 +2206,6 @@ Format_description_log_event(uint8 binlog_ver, const char* server_ver,
   }
   calc_server_version_split();
   deduct_options_written_to_bin_log();
-  checksum_alg_hulubulu= BINLOG_CHECKSUM_ALG_UNDEF;
   reset_crypto();
 }
 
@@ -2235,10 +2233,10 @@ Format_description_log_event(const uchar *buf, uint event_len,
                              const Format_description_log_event*
                              description_event)
   :Start_log_event_v3(buf, event_len, description_event),
-   common_header_len(0), post_header_len(NULL), event_type_permutation(0),
-   used_checksum_alg(BINLOG_CHECKSUM_ALG_UNDEF)
+   common_header_len(0), post_header_len(NULL), event_type_permutation(0)
 {
   DBUG_ENTER("Format_description_log_event::Format_description_log_event(char*,...)");
+  used_checksum_alg= BINLOG_CHECKSUM_ALG_UNDEF;
   if (!Start_log_event_v3::is_valid())
     DBUG_VOID_RETURN; /* sanity check */
   buf+= LOG_EVENT_MINIMAL_HEADER_LEN;
@@ -2260,11 +2258,11 @@ Format_description_log_event(const uchar *buf, uint event_len,
   {
     /* the last bytes are the checksum alg desc and value (or value's room) */
     number_of_event_types -= BINLOG_CHECKSUM_ALG_DESC_LEN;
-    checksum_alg_hulubulu= used_checksum_alg= (enum_binlog_checksum_alg)post_header_len[number_of_event_types];
+    used_checksum_alg= (enum_binlog_checksum_alg)post_header_len[number_of_event_types];
   }
   else
   {
-    checksum_alg_hulubulu= BINLOG_CHECKSUM_ALG_UNDEF;
+    used_checksum_alg= BINLOG_CHECKSUM_ALG_OFF;
   }
   deduct_options_written_to_bin_log();
   reset_crypto();

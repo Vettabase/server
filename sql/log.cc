@@ -3924,7 +3924,7 @@ bool MYSQL_BIN_LOG::open(const char *log_name,
         checksum_alg= (enum_binlog_checksum_alg)binlog_checksum_options;
       DBUG_ASSERT(checksum_alg != BINLOG_CHECKSUM_ALG_UNDEF);
 
-      Format_description_log_event s(BINLOG_VERSION);
+      Format_description_log_event s(BINLOG_VERSION, NULL, checksum_alg);
       if (is_relay_log)
         s.set_relay_log_event();
       /*
@@ -3957,7 +3957,6 @@ bool MYSQL_BIN_LOG::open(const char *log_name,
             goto err;
 
           Start_encryption_log_event sele(1, key_version, crypto.nonce);
-          sele.checksum_alg_hulubulu= s.checksum_alg_hulubulu;
           if (write_event(&sele, checksum_alg))
             goto err;
 
@@ -5537,7 +5536,7 @@ int MYSQL_BIN_LOG::new_file_impl()
       checksum_alg= relay_log_checksum_alg;
     else
       checksum_alg= r.select_checksum_alg();
-    DBUG_ASSERT(relay_log_checksum_alg != BINLOG_CHECKSUM_ALG_UNDEF);
+    DBUG_ASSERT(checksum_alg != BINLOG_CHECKSUM_ALG_UNDEF);
     if ((DBUG_IF("fault_injection_new_file_rotate_event") &&
                          (error= close_on_error= TRUE)) ||
         (error= write_event(&r, checksum_alg)))
