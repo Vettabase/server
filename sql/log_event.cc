@@ -2039,9 +2039,10 @@ Start_log_event_v3::Start_log_event_v3(const uchar *buf, uint event_len,
 */
 
 Format_description_log_event::
-Format_description_log_event(uint8 binlog_ver, const char* server_ver)
+Format_description_log_event(uint8 binlog_ver, const char* server_ver,
+                             enum enum_binlog_checksum_alg checksum_alg)
   :Start_log_event_v3(), event_type_permutation(0),
-   source_checksum_alg(BINLOG_CHECKSUM_ALG_UNDEF)
+   source_checksum_alg(checksum_alg)
 {
   binlog_version= binlog_ver;
   switch (binlog_ver) {

@@ -3911,15 +3911,7 @@ bool MYSQL_BIN_LOG::open(const char *log_name,
         In 4.x we put Start event only in the first binlog. But from 5.0 we
         want a Start event even if this is not the very first binlog.
       */
-      Format_description_log_event s(BINLOG_VERSION);
-      /*
-        don't set LOG_EVENT_BINLOG_IN_USE_F for SEQ_READ_APPEND io_cache
-        as we won't be able to reset it later
-      */
-      if (io_cache_type == WRITE_CACHE)
-        s.flags |= LOG_EVENT_BINLOG_IN_USE_F;
-
-     enum enum_binlog_checksum_alg checksum_alg= BINLOG_CHECKSUM_ALG_UNDEF;
+      enum enum_binlog_checksum_alg checksum_alg= BINLOG_CHECKSUM_ALG_UNDEF;
       if (is_relay_log)
       {
         if (relay_log_checksum_alg == BINLOG_CHECKSUM_ALG_UNDEF)
@@ -3927,13 +3919,22 @@ bool MYSQL_BIN_LOG::open(const char *log_name,
             opt_slave_sql_verify_checksum ? (enum_binlog_checksum_alg) binlog_checksum_options
                                           : BINLOG_CHECKSUM_ALG_OFF;
         checksum_alg= relay_log_checksum_alg;
-        s.set_relay_log_event();
       }
       else
         checksum_alg= (enum_binlog_checksum_alg)binlog_checksum_options;
+      DBUG_ASSERT(checksum_alg != BINLOG_CHECKSUM_ALG_UNDEF);
+
+      Format_description_log_event s(BINLOG_VERSION);
+      if (is_relay_log)
+        s.set_relay_log_event();
+      /*
+        don't set LOG_EVENT_BINLOG_IN_USE_F for SEQ_READ_APPEND io_cache
+        as we won't be able to reset it later
+      */
+      if (io_cache_type == WRITE_CACHE)
+        s.flags |= LOG_EVENT_BINLOG_IN_USE_F;
 
       crypto.scheme = 0;
-      DBUG_ASSERT(checksum_alg != BINLOG_CHECKSUM_ALG_UNDEF);
       if (!s.is_valid())
         goto err;
       s.dont_set_created= null_created_arg;
@@ -7522,9 +7523,6 @@ public:
     : Log_event_writer(file_arg, 0, checksum_alg, cr), remains(0), thd(thd_arg),
       first(true)
   {
-    checksum_len= ( (checksum_alg != BINLOG_CHECKSUM_ALG_OFF &&
-                     checksum_alg != BINLOG_CHECKSUM_ALG_UNDEF) ?
-                    BINLOG_CHECKSUM_LEN : 0);
   }
 
   ~CacheWriter()
