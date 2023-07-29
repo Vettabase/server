@@ -1008,6 +1008,20 @@ public:
   void set_incident();
   void set_encrypted_writer()
   { encrypt_or_write= &Log_event_writer::encrypt_and_write; }
+  /*
+    Set a specific checksum setting. Used to ensure that
+    Format_description_log_event is always written with a checksum.
+  */
+  enum enum_binlog_checksum_alg set_checksum_alg(enum enum_binlog_checksum_alg alg)
+  {
+    /* Must be adapted to store the actual algorithm if we add another. */
+    enum enum_binlog_checksum_alg orig=
+      (checksum_len ? BINLOG_CHECKSUM_ALG_CRC32 : BINLOG_CHECKSUM_ALG_OFF);
+    checksum_len=
+      (alg != BINLOG_CHECKSUM_ALG_OFF && alg != BINLOG_CHECKSUM_ALG_UNDEF) ?
+      BINLOG_CHECKSUM_LEN : 0;
+    return orig;
+  }
 
   Log_event_writer(IO_CACHE *file_arg, binlog_cache_data *cache_data_arg,
                    enum enum_binlog_checksum_alg checksum_alg,

@@ -839,7 +839,7 @@ public:
   bool write_event(Log_event *ev);
 
   bool write_event_buffer(uchar* buf,uint len);
-  bool append(Log_event* ev);
+  bool append(Log_event* ev, enum enum_binlog_checksum_alg checksum_alg);
   bool append_no_lock(Log_event* ev, enum enum_binlog_checksum_alg checksum_alg);
 
   void mark_xids_active(ulong cookie, uint xid_count);
