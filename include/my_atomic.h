@@ -172,7 +172,7 @@
   my_atomic_cas32((int32 volatile *)(P), (E), (D))
 #define my_atomic_casul_weak_explicit(P, E, D, S, F) \
   my_atomic_cas32_weak_explicit((int32 volatile *)(P), (E), (D), (S), (F))
-#define my_atomic_casul_strong_explicit((int32 volatile *)P, E, D, S, F) \
+#define my_atomic_casul_strong_explicit(P, E, D, S, F) \
   my_atomic_cas32_strong_explicit((int32 volatile *)(P), (E), (D), (S), (F))
 #elif SIZEOF_LONG == 8
 #define my_atomic_storeul(P, D) my_atomic_store64((P), (D))
