@@ -3441,17 +3441,19 @@ dberr_t fsp_traverse_extents(
     if (err) return err;
   }
 
-  buf_block_t *block= fsp_get_latched_xdes_page(
-    last_descr_page_no, mtr, &err);
-
-  if (!block) return err;
-
+  buf_block_t *block= nullptr;
   std::vector<uint32_t> modified_xdes;
 
   for (uint32_t cur_extent=
        ((space->free_limit - 1)/ FSP_EXTENT_SIZE) * FSP_EXTENT_SIZE;
-       cur_extent > threshold;)
+       cur_extent >= threshold;)
   {
+    if (!block)
+    {
+      block= fsp_get_latched_xdes_page(last_descr_page_no, mtr, &err);
+      if (!block) return err;
+    }
+
     xdes_t *descr= XDES_ARR_OFFSET + XDES_SIZE
       * xdes_calc_descriptor_index(0, cur_extent)
       + block->page.frame;
@@ -3495,24 +3497,21 @@ dberr_t fsp_traverse_extents(
     uint32_t cur_descr_page= xdes_calc_descriptor_page(0, cur_extent);
     if (last_descr_page_no != cur_descr_page)
     {
-      if (last_descr_page_no > threshold)
+      if (last_descr_page_no >= threshold)
         mtr->release_last_page();
-
-      if (!find_last_used_extent)
-      {
-        for (auto it : modified_xdes)
-	{
-          err= old_xdes_entry->insert(it, mtr);
-	  if (err) return err;
-	}
-        modified_xdes.clear();
-      }
-
       last_descr_page_no= cur_descr_page;
-      block= fsp_get_latched_xdes_page(
-        last_descr_page_no, mtr, &err);
-      if (!block) return err;
+      block= nullptr;
     }
+  }
+
+  if (!find_last_used_extent)
+  {
+    for (auto it : modified_xdes)
+    {
+      err= old_xdes_entry->insert(it, mtr);
+      if (err) return err;
+    }
+    modified_xdes.clear();
   }
   return err;
 }
@@ -3548,19 +3547,19 @@ void fsp_system_tablespace_truncate()
 {
   uint32_t last_used_extent= 0;
   fil_space_t *space= fil_system.sys_space;
-  mtr_t limit_mtr;
-  limit_mtr.start();
-  limit_mtr.x_lock_space(space);
-  dberr_t err= fsp_traverse_extents(space, &last_used_extent, &limit_mtr);
-  limit_mtr.commit();
+  mtr_t mtr;
+  mtr.start();
+  mtr.x_lock_space(space);
+  dberr_t err= fsp_traverse_extents(space, &last_used_extent, &mtr);
   if (err != DB_SUCCESS)
   {
 func_exit:
     sql_print_warning("InnoDB: Cannot shrink the system tablespace "
                       "due to %s", ut_strerr(err));
+    mtr.commit();
     return;
   }
-
+  mtr.commit();
   uint32_t fixed_size= srv_sys_space.get_min_size();
 
   if (last_used_extent >= space->size_in_header ||
@@ -3582,7 +3581,6 @@ func_exit:
   buf_block_t *header= nullptr;
   ut_ad(!fsp_sys_tablespace_validate());
 
-  mtr_t mtr;
   mtr.start();
   mtr.x_lock_space(space);
 
@@ -3609,11 +3607,7 @@ func_exit:
 
     header= fsp_get_latched_xdes_page(0, &mtr, &err);
     if (!header)
-    {
-err_exit:
-      mtr.commit();
       goto func_exit;
-    }
 
     mtr.write<4, mtr_t::FORCED>(
       *header, FSP_HEADER_OFFSET + FSP_SIZE + header->page.frame,
@@ -3626,16 +3620,16 @@ err_exit:
     err= fsp_shrink_list(
       header, FSP_HEADER_OFFSET + FSP_FREE, last_used_extent, &mtr);
     if (err != DB_SUCCESS)
-      goto err_exit;
+      goto func_exit;
 
     err= fsp_shrink_list(
       header, FSP_HEADER_OFFSET + FSP_FREE_FRAG, last_used_extent, &mtr);
     if (err != DB_SUCCESS)
-      goto err_exit;
+      goto func_exit;
 
     err= fsp_xdes_reset(space, last_used_extent, &mtr);
     if (err != DB_SUCCESS)
-      goto err_exit;
+      goto func_exit;
 
     mtr.trim_pages(page_id_t(0, last_used_extent));
     size_t shrink_redo_size= mtr.get_log_size();
