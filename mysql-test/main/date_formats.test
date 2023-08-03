@@ -378,3 +378,31 @@ select time_format('2001-01-01 02:02:02', '%d %T');
 select time_format('01 02:02:02', '%d %T');
 select time_format('01 02:02:02', '%T');
 select time_format('2001-01-01 02:02:02', '%T');
+
+--echo #
+--echo # Beginning of 11.3
+--echo #
+
+--replace_regex /[+-][0-9]* [A-Z]*/+|-HH:MM ABC/
+SELECT DATE_FORMAT('2009-10-04 22:23:00', '%z %Z') AS current_timezone;
+
+--replace_regex /[+-][0-9]* [A-Z]*/+|-HH:MM ABC/
+SELECT DATE_FORMAT(CURDATE(), '%z %Z') AS current_tz;
+
+--replace_regex /[+-][0-9]* [A-Z]*/+|-HH:MM ABC/
+SELECT DATE_FORMAT(CURRENT_DATE, '%z %Z') AS current_tz;
+
+--replace_regex /[+-][0-9]* [A-Z]*/+|-HH:MM ABC/
+SELECT DATE_FORMAT(CURRENT_DATE(), '%z %Z') AS current_tz;
+
+--replace_regex /[+-][0-9]* [A-Z]*/+|-HH:MM ABC/
+SELECT DATE_FORMAT(CURRENT_TIME, '%z %Z') AS current_tz;
+
+--replace_regex /[+-][0-9]* [A-Z]*/+|-HH:MM ABC/
+SELECT DATE_FORMAT(CURRENT_TIME(6), '%z %Z') AS current_tz;
+
+--replace_regex /[+-][0-9]* [A-Z]*/+|-HH:MM ABC/
+SELECT DATE_FORMAT(CURRENT_TIMESTAMP, '%z %Z') AS current_tz;
+
+--replace_regex /[+-][0-9]* [A-Z]*/+|-HH:MM ABC/
+SELECT DATE_FORMAT(NOW(), '%z %Z') AS current_tz;

@@ -573,3 +573,30 @@ time_format('01 02:02:02', '%T')
 select time_format('2001-01-01 02:02:02', '%T');
 time_format('2001-01-01 02:02:02', '%T')
 02:02:02
+#
+# Beginning of 11.3
+#
+SELECT DATE_FORMAT('2009-10+|-HH:MM ABC22:23:00', '%z %Z') AS current_timezone;
+current_timezone
++|-HH:MM ABC
+SELECT DATE_FORMAT(CURDATE(), '%z %Z') AS current_tz;
+current_tz
++|-HH:MM ABC
+SELECT DATE_FORMAT(CURRENT_DATE, '%z %Z') AS current_tz;
+current_tz
++|-HH:MM ABC
+SELECT DATE_FORMAT(CURRENT_DATE(), '%z %Z') AS current_tz;
+current_tz
++|-HH:MM ABC
+SELECT DATE_FORMAT(CURRENT_TIME, '%z %Z') AS current_tz;
+current_tz
++|-HH:MM ABC
+SELECT DATE_FORMAT(CURRENT_TIME(6), '%z %Z') AS current_tz;
+current_tz
++|-HH:MM ABC
+SELECT DATE_FORMAT(CURRENT_TIMESTAMP, '%z %Z') AS current_tz;
+current_tz
++|-HH:MM ABC
+SELECT DATE_FORMAT(NOW(), '%z %Z') AS current_tz;
+current_tz
++|-HH:MM ABC

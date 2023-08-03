@@ -468,6 +468,21 @@ err:
   DBUG_RETURN(1);
 }
 
+/*
+
+  Gets local time in MYSQL_TIME structure and tm struct.
+
+*/
+void get_local_TIME(MYSQL_TIME *local_TIME, struct tm* tm_local_time)
+{
+  time_t local_time_sec= my_time(0);
+
+  localtime_r(&local_time_sec, tm_local_time);
+  localtime_to_TIME(local_TIME, tm_local_time);
+
+  return;
+}
+
 
 /**
   Create a formatted date/time value in a string.
@@ -482,6 +497,14 @@ static bool make_date_time(const String *format, const MYSQL_TIME *l_time,
   uint weekday;
   ulong length;
   const char *ptr, *end;
+  struct tm tm_local_time;
+  MYSQL_TIME local_TIME;
+
+  /*
+    precalculate local time and timezone information because
+    %z or %Z maybe present in the format.
+  */
+  get_local_TIME(&local_TIME, &tm_local_time);
 
   str->length(0);
 
@@ -699,6 +722,46 @@ static bool make_date_time(const String *format, const MYSQL_TIME *l_time,
 	str->append_with_prefill(intbuff, length, 1, '0');
 	break;
 
+      case 'z':
+      {
+        unsigned int err;
+        time_t time_gmt_sec;
+        struct tm tm_gmt;
+
+        /* get tm struct for UTC. */
+        time_gmt_sec= thd_TIME_to_gmt_sec(current_thd, &local_TIME, &err);
+        gmtime_r(&time_gmt_sec, &tm_gmt);
+
+        if (tm_local_time.tm_hour >= tm_gmt.tm_hour)
+          str->append("+", 1, system_charset_info);
+        else
+          str->append("-", 1, system_charset_info);
+
+        char hr[2], min[2];
+        int hr_diff= abs(tm_local_time.tm_hour - tm_gmt.tm_hour);
+        int min_diff= tm_local_time.tm_min - tm_gmt.tm_min;
+        if (min_diff < 0)
+        {
+          hr_diff--;
+          min_diff += 60;
+       }
+
+        if (hr_diff/10 == 0) /* is a single digit time difference between hours. */
+          str->append("0", 1, system_charset_info);
+        int10_to_str(hr_diff, hr, 10);
+        str->append((const char*)(hr), strlen(hr), system_charset_info);
+        int10_to_str(min_diff, min, 10);
+        str->append((const char*)(min), strlen(min), system_charset_info);
+      }
+        break;
+
+      case 'Z':
+      {
+        str->append(tm_local_time.tm_zone,
+                    (uint) strlen(tm_local_time.tm_zone),
+                    system_charset_info);
+      }
+        break;
       default:
 	str->append(*ptr);
 	break;
