@@ -1997,10 +1997,31 @@ int Field::store_to_statistical_minmax_field(Field *field, String *val)
 }
 
 
-int Field::store_from_statistical_minmax_field(Field *stat_field, String *str)
+int Field::store_from_statistical_minmax_field(Field *stat_field, String *str,
+                                               MEM_ROOT *mem)
 {
   stat_field->val_str(str);
   return store_text(str->ptr(), str->length(), &my_charset_bin);
+}
+
+
+/*
+  Same as above, but store the string in the statistics mem_root to make it
+  easy to free everything by just freeing the mem_root.
+*/
+
+int Field_blob::store_from_statistical_minmax_field(Field *stat_field,
+                                                    String *str,
+                                                    MEM_ROOT *mem)
+{
+  String *tmp= stat_field->val_str(str);
+  char *ptr;
+  if (!(ptr= (char*) memdup_root(mem, tmp->ptr(), tmp->length())))
+  {
+    store_text(0, 0, &my_charset_bin);
+    return 1;
+  }
+  return store_text(ptr, tmp->length(), &my_charset_bin);
 }
 
 
