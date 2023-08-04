@@ -1,0 +1,56 @@
+#
+# Helper file to run through test cases to validate that the replica will stop
+# at the correct place when running STOP SLAVE UNTIL with options EXCLUSIVE
+# and INCLUSIVE, as well as their aliases SQL_BEFORE_GTID and SQL_AFTER_GTID.
+#
+# Prerequisites:
+#   CREATE TABLE t1 (a int);
+#   CREATE TABLE t2 (a int);
+#
+#
+# MTR Parameters:
+#   t1_ctr
+#   t2_ctr
+#   ssu_exclusive
+#   ssu_opt
+#
+
+--echo #
+--echo # Test Case 1:
+--echo # The replica should stop at the correct place with a single GTID domain
+--echo # id
+--connection slave
+--source include/stop_slave.inc
+
+--connection master
+set session gtid_domain_id=1;
+--eval INSERT INTO t1 VALUES ($t1_ctr)
+--inc $t1_ctr
+if ($ssu_exclusive)
+{
+    --let $expected_stop_gtid= `SELECT @@gtid_binlog_pos`
+}
+--eval INSERT INTO t1 VALUES ($t1_ctr)
+--inc $t1_ctr
+--let $until_gtid= `SELECT @@gtid_binlog_pos`
+if (!$ssu_exclusive)
+{
+    --let $expected_stop_gtid= `SELECT @@gtid_binlog_pos`
+}
+--eval INSERT INTO t1 VALUES ($t1_ctr)
+--inc $t1_ctr
+
+--connection slave
+--eval START SLAVE UNTIL $ssu_opt="$until_gtid"
+--source include/wait_for_slave_sql_to_stop.inc
+--let $actual_stop_gtid= `SELECT @@gtid_slave_pos`
+
+if (`SELECT strcmp("$expected_stop_gtid","$actual_stop_gtid") != 0`)
+{
+    --echo # Expected stop gtid != actual stop gtid ($expected_stop_gtid != $actual_stop_gtid)
+    --die Expected stop gtid != actual stop gtid
+}
+
+--echo # Expected and actual stop ($expected_stop_gtid == $actual_stop_gtid)
+
+--source include/start_slave.inc

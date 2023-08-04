@@ -1,0 +1,50 @@
+#
+# Purpose:
+#
+# Methodology:
+#
+# References:
+#
+--source include/master-slave.inc
+--source include/have_innodb.inc
+
+--source include/have_log_bin.inc
+#--source include/have_binlog_format_row.inc
+#--source include/have_binlog_format_mixed.inc
+#--source include/have_binlog_format_statement.inc
+
+--echo #
+--echo # Initialize test data
+--connection master
+create table t1 (a int);
+create table t2 (a int);
+--source include/save_master_gtid.inc
+
+--connection slave
+--source include/sync_with_master_gtid.inc
+
+
+--let $t1_ctr= 1
+--let $t2_ctr= 1
+--let $ssu_exclusive=1
+--let $ssu_opt=EXCLUSIVE master_gtid_pos
+--source include/rpl_gtid_until_exclusive.test
+
+--let $ssu_exclusive=0
+--let $ssu_opt=INCLUSIVE master_gtid_pos
+--source include/rpl_gtid_until_exclusive.test
+
+
+--echo #
+--echo # Cleanup
+--connection master
+DROP TABLE t1, t2;
+--source include/save_master_gtid.inc
+
+--connection slave
+--source include/sync_with_master_gtid.inc
+
+--source include/rpl_end.inc
+
+--echo # End of tests
+
