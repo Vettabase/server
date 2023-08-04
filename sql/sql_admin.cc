@@ -941,6 +941,8 @@ static bool mysql_admin_table(THD* thd, TABLE_LIST* tables,
             tab->keys_in_use_for_query.set_bit(--pos);
           }
         }
+        /* Ensure that number of records are updated */
+        table->table->file->info(HA_STATUS_VARIABLE);
         if (!(compl_result_code=
               alloc_statistics_for_table(thd, table->table)) &&
             !(compl_result_code=
@@ -1237,10 +1239,7 @@ send_result_message:
       /*
         Don't skip flushing if we are collecting EITS statistics.
       */
-      const bool skip_flush=
-        (operator_func == &handler::ha_analyze) && 
-        (table->table->file->ha_table_flags() & HA_ONLINE_ANALYZE) &&
-        !collect_eis;
+      const bool skip_flush= (operator_func == &handler::ha_analyze);
       if (table->table->s->tmp_table)
       {
         /*
@@ -1259,6 +1258,13 @@ send_result_message:
         */
         table->table= 0;                        // For query cache
         query_cache_invalidate3(thd, table, 0);
+      }
+      else if (collect_eis && skip_flush && compl_result_code == HA_ADMIN_OK)
+      {
+        TABLE_LIST *save_next_global= table->next_global;
+        table->next_global= 0;
+        read_statistics_for_tables(thd, table, true /* force_reload */);
+        table->next_global= save_next_global;
       }
     }
     /* Error path, a admin command failed. */
