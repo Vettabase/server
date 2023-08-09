@@ -443,6 +443,15 @@ int mysql_load(THD *thd, const sql_exchange *ex, TABLE_LIST *table_list,
   is_concurrent= (table_list->lock_type == TL_WRITE_CONCURRENT_INSERT);
 #endif
 
+  /* There are only three posibilities here: REPLACE:
+  handle_replicates == DUP_REPLACE && ignore == 0; IGNORE:
+  handle_duplicates == DUP_ERROR && ignore == 1; neither:
+  handle_duplicates == DUP_ERROR && ignore == 0 */
+  DBUG_ASSERT(!ignore || handle_duplicates == DUP_ERROR);
+  /* Notify the engine about insert ignore operation */
+  if (ignore)
+    table->file->extra(HA_EXTRA_IGNORE_INSERT);
+
   if (check_duplic_insert_without_overlaps(thd, table, handle_duplicates) != 0)
     DBUG_RETURN(true);
 

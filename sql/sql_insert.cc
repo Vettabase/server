@@ -1027,6 +1027,9 @@ bool mysql_insert(THD *thd, TABLE_LIST *table_list,
   if (returning)
     fix_rownum_pointers(thd, thd->lex->returning(), &info.accepted_rows);
 
+  /* Notify the engine about insert ignore operation */
+  if (info.handle_duplicates == DUP_ERROR && info.ignore)
+    table->file->extra(HA_EXTRA_IGNORE_INSERT);
   do
   {
     DBUG_PRINT("info", ("iteration %llu", iteration));
@@ -2214,9 +2217,6 @@ int write_record(THD *thd, TABLE *table, COPY_INFO *info, select_result *sink)
     goto after_trg_or_ignored_err;
   }
 
-  /* Notify the engine about insert ignore operation */
-  if (info->handle_duplicates == DUP_ERROR && info->ignore)
-    table->file->extra(HA_EXTRA_IGNORE_INSERT);
 after_trg_n_copied_inc:
   info->copied++;
   thd->record_first_successful_insert_id_in_cur_stmt(table->file->insert_id_for_cur_row);
@@ -3647,6 +3647,9 @@ bool Delayed_insert::handle_inserts(void)
     }
     if (info.handle_duplicates == DUP_UPDATE)
       table->file->extra(HA_EXTRA_INSERT_WITH_UPDATE);
+    /* Notify the engine about insert ignore operation */
+    if (info.handle_duplicates == DUP_ERROR && info.ignore)
+      table->file->extra(HA_EXTRA_IGNORE_INSERT);
     thd.clear_error(); // reset error for binlog
 
     tmp_error= 0;
@@ -4181,6 +4184,9 @@ int select_insert::send_data(List<Item> &values)
     }
   }
 
+  /* Notify the engine about insert ignore operation */
+  if (info.handle_duplicates == DUP_ERROR && info.ignore)
+    table->file->extra(HA_EXTRA_IGNORE_INSERT);
   error= write_record(thd, table, &info, sel_result);
   table->auto_increment_field_not_null= FALSE;
 

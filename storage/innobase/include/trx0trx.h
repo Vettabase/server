@@ -815,6 +815,7 @@ public:
 					flush the log in
 					trx_commit_complete_for_mysql() */
 	ulint		duplicates;	/*!< TRX_DUP_IGNORE | TRX_DUP_REPLACE */
+  bool    ignore_insert;
   /** whether this modifies InnoDB dictionary tables */
   bool dict_operation;
 #ifdef UNIV_DEBUG

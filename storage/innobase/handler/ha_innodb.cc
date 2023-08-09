@@ -7748,6 +7748,8 @@ ha_innobase::write_row(
 	DBUG_ENTER("ha_innobase::write_row");
 
 	trx_t*		trx = thd_to_trx(m_user_thd);
+  if (trx->ignore_insert)
+    trx->bulk_insert= false;
 
 	/* Validation checks before we commence write_row operation. */
 	if (is_read_only()) {
@@ -15647,6 +15649,7 @@ ha_innobase::extra(
 	/* Warning: since it is not sure that MariaDB calls external_lock()
 	before calling this function, m_prebuilt->trx can be obsolete! */
 	trx_t* trx = check_trx_exists(ha_thd());
+  trx->ignore_insert = false;
 
 	switch (operation) {
 	case HA_EXTRA_FLUSH:
@@ -15664,6 +15667,7 @@ ha_innobase::extra(
 		we want !trx->duplicates for INSERT IGNORE so that
 		row_ins_duplicate_error_in_clust() will acquire a
 		shared lock instead of an exclusive lock. */
+    trx->ignore_insert= true;
 	stmt_boundary:
 		trx->bulk_insert_apply();
 		trx->end_bulk_insert(*m_prebuilt->table);
