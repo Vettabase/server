@@ -1,0 +1,8 @@
+!include include/default_my.cnf
+
+[mysqld.1]
+innodb_buffer_pool_size = 10G
+log_error
+log_warnings
+innodb_log_file_size = 6G
+innodb_file_per_table = 1
