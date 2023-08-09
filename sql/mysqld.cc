@@ -355,6 +355,9 @@ static const char *character_set_collations_str= "";
 Thread_cache thread_cache;
 static bool binlog_format_used= false;
 LEX_STRING opt_init_connect, opt_init_slave;
+/*
+  LEX_STRING *opt_redirect_url;
+ */
 static DYNAMIC_ARRAY all_options;
 static longlong start_memory_used;
 
@@ -4376,6 +4379,8 @@ static int init_common_variables()
                               MY_CS_PRIMARY, MYF(utf8_flag | MY_WME))))
     return 1;
   global_system_variables.character_set_filesystem= character_set_filesystem;
+
+  global_system_variables.redirect_url= nullptr;
 
   if (!(my_default_lc_time_names=
         my_locale_by_name(lc_time_names_name)))

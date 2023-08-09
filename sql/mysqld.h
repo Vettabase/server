@@ -293,6 +293,9 @@ extern "C" MYSQL_PLUGIN_IMPORT char **orig_argv;
 extern pthread_attr_t connection_attrib;
 extern my_bool old_mode;
 extern LEX_STRING opt_init_connect, opt_init_slave;
+/*
+  extern LEX_STRING *opt_redirect_url;
+ */
 extern char err_shared_dir[];
 extern ulong connection_errors_select;
 extern ulong connection_errors_accept;

@@ -866,6 +866,8 @@ typedef struct system_variables
   CHARSET_INFO	*collation_database;
   CHARSET_INFO  *collation_connection;
 
+  LEX_CSTRING *redirect_url;
+
   /* Names. These will be allocated in buffers in thd */
   LEX_CSTRING default_master_connection;
 

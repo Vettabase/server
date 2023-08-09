@@ -1343,6 +1343,30 @@ Sys_init_connect(
        DEFAULT(""), &PLock_sys_init_connect, NOT_IN_BINLOG,
        ON_CHECK(check_init_string));
 
+/* TODO: fill in this stub. */
+/*
+  static bool check_redirect_url(sys_var *self, THD *thd, set_var *var)
+  {
+    LEX_CSTRING tmp;
+    tmp.str= var->save_result.string_value.str;
+    tmp.length= var->save_result.string_value.length;
+    if (!tmp.str)
+      return true;
+  
+    return false;
+  }
+ */
+
+static Sys_var_struct Sys_redirect_url(
+       "redirect_url", "URL to redirect to, if not empty",
+       SESSION_VAR(redirect_url),
+       NO_CMD_LINE,
+       /*
+         CMD_LINE(OPT_ARG),
+        */
+       offsetof(LEX_CSTRING, str), DEFAULT(0),
+       NO_MUTEX_GUARD, NOT_IN_BINLOG, ON_CHECK(0));
+
 #ifdef HAVE_REPLICATION
 static bool check_master_connection(sys_var *self, THD *thd, set_var *var)
 {
@@ -6952,7 +6976,7 @@ static Sys_var_sesvartrack Sys_track_session_sys_vars(
        "Track changes in registered system variables. ",
        CMD_LINE(REQUIRED_ARG),
        DEFAULT("autocommit,character_set_client,character_set_connection,"
-       "character_set_results,time_zone"));
+       "character_set_results,time_zone,redirect_url"));
 
 static bool update_session_track_schema(sys_var *self, THD *thd,
                                         enum_var_type type)
