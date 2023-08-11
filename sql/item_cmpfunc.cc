@@ -4915,7 +4915,7 @@ Item_cond::fix_fields(THD *thd, Item **ref)
   List_iterator<Item> li(list);
   Item *item;
   uchar buff[sizeof(char*)];			// Max local vars in function
-  bool is_and_cond= functype() == Item_func::COND_AND_FUNC;
+
   not_null_tables_cache= 0;
   used_tables_and_const_cache_init();
 
@@ -4958,50 +4958,22 @@ Item_cond::fix_fields(THD *thd, Item **ref)
     item= *li.ref(); // may be substituted in fix_fields/merge_item_if_possible
 
     used_tables_cache|=     item->used_tables();
-    if (item->can_eval_in_optimize() && !item->with_sp_var() &&
-        !cond_has_datetime_is_null(item))
-    {
-      if (item->eval_const_cond() == is_and_cond && top_level())
-      {
-        /* 
-          a. This is "... AND true_cond AND ..."
-          In this case, true_cond  has no effect on cond_and->not_null_tables()
-          b. This is "... OR false_cond/null cond OR ..." 
-          In this case, false_cond has no effect on cond_or->not_null_tables()
-        */
-      }
-      else
-      {
-        /* 
-          a. This is "... AND false_cond/null_cond AND ..."
-          The whole condition is FALSE/UNKNOWN.
-          b. This is  "... OR const_cond OR ..."
-          In this case, cond_or->not_null_tables()=0, because the condition
-          const_cond might evaluate to true (regardless of whether some tables
-          were NULL-complemented).
-        */
-        not_null_tables_cache= (table_map) 0;
-        and_tables_cache= (table_map) 0;
-      }
-      if (thd->is_error())
-        return TRUE;
-    }
-    else
-    {
-      table_map tmp_table_map= item->not_null_tables();
-      not_null_tables_cache|= tmp_table_map;
-      and_tables_cache&= tmp_table_map;
-
-      const_item_cache= FALSE;
-    } 
     base_flags|= item->base_flags & item_base_t::MAYBE_NULL;
     with_flags|= item->with_flags;
   }
-  if (fix_length_and_dec())
-    return TRUE;
+  (void) eval_not_null_tables((void*) 0);
+
+  /*
+    We have to set fixed as some other items will check it and fail if we
+    do not. This can be changed when we properly check if fix_fields()
+    fails in call cases.
+  */
   base_flags|= item_base_t::FIXED;
+  if (fix_length_and_dec() || thd->is_error())
+    return TRUE;
   return FALSE;
 }
+
 
 /**
   @brief
@@ -5052,6 +5024,10 @@ void Item_cond::merge_sub_condition(List_iterator<Item>& li)
   }
 }
 
+/*
+  Calculate not_null_tables_cache and and_tables_cache.
+  Reset const_item_cache if not all items are const.
+*/
 
 bool
 Item_cond::eval_not_null_tables(void *opt_arg)
@@ -5059,15 +5035,18 @@ Item_cond::eval_not_null_tables(void *opt_arg)
   Item *item;
   bool is_and_cond= functype() == Item_func::COND_AND_FUNC;
   List_iterator<Item> li(list);
+  bool found= 0;
+
   not_null_tables_cache= (table_map) 0;
   and_tables_cache= ~(table_map) 0;
   while ((item=li++))
   {
-    table_map tmp_table_map;
-    if (item->can_eval_in_optimize() && !item->with_sp_var() &&
-        !cond_has_datetime_is_null(item))
+    bool const_item;
+    if ((const_item= item->can_eval_in_optimize()) &&
+        !item->with_sp_var() && !item->with_param() &&
+        !cond_has_datetime_is_null(item) && top_level())
     {
-      if (item->eval_const_cond() == is_and_cond && top_level())
+      if (item->eval_const_cond() == is_and_cond)
       {
         /* 
           a. This is "... AND true_cond AND ..."
@@ -5086,15 +5065,21 @@ Item_cond::eval_not_null_tables(void *opt_arg)
           const_cond might evaluate to true (regardless of whether some tables
           were NULL-complemented).
         */
+        found= 1;
         not_null_tables_cache= (table_map) 0;
         and_tables_cache= (table_map) 0;
       }
     }
     else
     {
-      tmp_table_map= item->not_null_tables();
-      not_null_tables_cache|= tmp_table_map;
+      table_map tmp_table_map= item->not_null_tables();
+      if (!found)
+      {
+        /* We should not depend on the order of items */
+        not_null_tables_cache|= tmp_table_map;
+      }
       and_tables_cache&= tmp_table_map;
+      const_item_cache&= const_item;
     }
   }
   return 0;

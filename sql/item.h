@@ -787,7 +787,8 @@ enum class item_with_t : item_flags_t
   FIELD=       (1<<2), // If any item except Item_sum contains a field.
   SUM_FUNC=    (1<<3), // If item contains a sum func
   SUBQUERY=    (1<<4), // If item containts a sub query
-  ROWNUM_FUNC= (1<<5)
+  ROWNUM_FUNC= (1<<5), // If ROWNUM function was used
+  PARAM=       (1<<6)  // If user parameter was used
 };
 
 
@@ -1087,6 +1088,8 @@ public:
   { return (bool) (with_flags & item_with_t::SUBQUERY); }
   inline bool with_rownum_func() const
   { return (bool) (with_flags & item_with_t::ROWNUM_FUNC); }
+  inline bool with_param() const
+  { return (bool) (with_flags & item_with_t::PARAM); }
   inline void copy_flags(const Item *org, item_base_t mask)
   {
     base_flags= (item_base_t) (((item_flags_t) base_flags &
