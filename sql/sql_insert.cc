@@ -1027,9 +1027,6 @@ bool mysql_insert(THD *thd, TABLE_LIST *table_list,
   if (returning)
     fix_rownum_pointers(thd, thd->lex->returning(), &info.accepted_rows);
 
-  /* Notify the engine about insert ignore operation */
-  if (info.handle_duplicates == DUP_ERROR && info.ignore)
-    table->file->extra(HA_EXTRA_IGNORE_INSERT);
   do
   {
     DBUG_PRINT("info", ("iteration %llu", iteration));
@@ -1164,6 +1161,9 @@ bool mysql_insert(THD *thd, TABLE_LIST *table_list,
   } while (bulk_parameters_iterations(thd));
 
 values_loop_end:
+  /* Notify the engine about insert ignore operation */
+  if (info.handle_duplicates == DUP_ERROR && info.ignore)
+    table->file->extra(HA_EXTRA_IGNORE_INSERT);
   free_underlaid_joins(thd, thd->lex->first_select_lex());
   joins_freed= TRUE;
 
